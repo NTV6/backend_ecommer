@@ -19,14 +19,23 @@ class Category {
         }
     }
 
+    static async findPublicIdById(id) {
+        try {
+            const [rows] = await db.query('SELECT image_public_id FROM categories WHERE id = ?', [id]);
+            return rows[0]?.image_public_id;
+        } catch (error) {
+            throw error;
+        }
+    }
+
     static async create(categoryData) {
         try {
-            const { name, description } = categoryData;
+            const { name, description, image, image_public_id } = categoryData;
             const [result] = await db.query(
-                'INSERT INTO categories (name, description) VALUES (?, ?)',
-                [name, description]
+                'INSERT INTO categories (name, description, image, image_public_id) VALUES (?, ?, ?, ?)',
+                [name, description, image, image_public_id]
             );
-            return { id: result.insertId, name, description };
+            return { id: result.insertId, name, description, image, image_public_id };
         } catch (error) {
             throw error;
         }
@@ -34,12 +43,12 @@ class Category {
 
     static async update(id, categoryData) {
         try {
-            const { name, description } = categoryData;
+            const { name, description, image, image_public_id } = categoryData;
             await db.query(
-                'UPDATE categories SET name = ?, description = ? WHERE id = ?',
-                [name, description, id]
+                'UPDATE categories SET name = ?, description = ?, image=?, image_public_id=? WHERE id = ?',
+                [name, description, image, image_public_id, id]
             );
-            return { id, name, description };
+            return { id, name, description, image, image_public_id };
         } catch (error) {
             throw error;
         }

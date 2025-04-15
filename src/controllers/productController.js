@@ -4,6 +4,7 @@ const { deleteImage } = require('../utils/cloudinary'); // Đường dẫn đế
 exports.getAllProducts = async (req, res) => {
     try {
         const products = await Product.findAll();
+
         res.status(200).json({
             status: 'success',
             results: products.length,

@@ -1,4 +1,5 @@
 const Category = require('../models/Category');
+const { deleteImage } = require('../utils/cloudinary'); // Đường dẫn đến tệp cấu hình Cloudinary
 
 exports.getAllCategories = async (req, res) => {
     try {
@@ -74,7 +75,17 @@ exports.updateCategory = async (req, res) => {
 
 exports.deleteCategory = async (req, res) => {
     try {
-        await Category.delete(req.params.id);
+        const categoryId = req.params.id;
+
+        // Lấy public_id trước khi xóa sản phẩm
+        const publicId = await Category.findPublicIdById(categoryId);
+
+        if (publicId) {
+            // Xóa ảnh từ Cloudinary
+            await deleteImage(publicId);
+        }
+
+        await Category.delete(categoryId);
 
         res.status(204).json({
             status: 'success',
