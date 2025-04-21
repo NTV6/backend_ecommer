@@ -58,14 +58,39 @@ class Product {
 
     static async findByCategory(categoryId) {
         try {
-            const [rows] = await db.query('SELECT * FROM products WHERE category_id = ?', [categoryId]);
-            return rows;
+            // Get all products in category
+            const [products] = await db.execute(
+                'SELECT * FROM products WHERE category_id = ?',
+                [categoryId]
+            );
+
+            // Get variants and images for each product
+            for (const product of products) {
+                // Get variants
+                const [variants] = await db.execute(
+                    'SELECT id, color, size, price, stock FROM product_variants WHERE product_id = ?',
+                    [product.id]
+                );
+
+                // Get images for each variant
+                for (const variant of variants) {
+                    const [images] = await db.execute(
+                        'SELECT id, image, image_public_id, is_thumbnail FROM product_variant_images WHERE variant_id = ?',
+                        [variant.id]
+                    );
+                    variant.images = images;
+                }
+
+                product.variants = variants;
+            }
+
+            return products;
         } catch (error) {
+            console.error('Error in findByCategory:', error);
             throw error;
         }
     }
 
-    // 👇 Tách hàm phụ để insert images (gọn và dùng lại dễ)
     static async #insertImages(conn, variantId, images) {
         const values = images.map(img => [
             variantId,

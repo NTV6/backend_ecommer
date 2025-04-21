@@ -41,6 +41,23 @@ exports.getProduct = async (req, res) => {
     }
 };
 
+exports.getProductsByCategory = async (req, res) => {
+    try {
+        const products = await Product.findByCategory(req.params.categoryId);
+
+        res.status(200).json({
+            status: 'success',
+            results: products.length,
+            data: { products }
+        });
+    } catch (error) {
+        res.status(500).json({
+            status: 'error',
+            message: error.message
+        });
+    }
+};
+
 exports.createProduct = async (req, res) => {
     try {
         const product = await Product.create(req.body);
@@ -92,22 +109,5 @@ exports.deleteProduct = async (req, res) => {
         res.status(200).json({ message: 'Product deleted successfully' });
     } catch (error) {
         res.status(500).json({ error: error.message });
-    }
-};
-
-exports.getProductsByCategory = async (req, res) => {
-    try {
-        const products = await Product.findByCategory(req.params.categoryId);
-
-        res.status(200).json({
-            status: 'success',
-            results: products.length,
-            data: { products }
-        });
-    } catch (error) {
-        res.status(500).json({
-            status: 'error',
-            message: error.message
-        });
     }
 };
