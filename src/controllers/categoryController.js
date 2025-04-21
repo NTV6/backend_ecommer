@@ -1,5 +1,5 @@
 const Category = require('../models/Category');
-const { deleteImage } = require('../utils/cloudinary'); // Đường dẫn đến tệp cấu hình Cloudinary
+const cloudinary = require('../config/cloudinary');
 
 exports.getAllCategories = async (req, res) => {
     try {
@@ -77,14 +77,26 @@ exports.deleteCategory = async (req, res) => {
     try {
         const categoryId = req.params.id;
 
-        // Lấy public_id trước khi xóa sản phẩm
-        const publicId = await Category.findPublicIdById(categoryId);
+        // Lấy thông tin category trước khi xóa
+        const category = await Category.findById(categoryId);
 
-        if (publicId) {
-            // Xóa ảnh từ Cloudinary
-            await deleteImage(publicId);
+        if (!category) {
+            return res.status(404).json({
+                status: 'fail',
+                message: 'Không tìm thấy danh mục'
+            });
         }
 
+        // Nếu có ảnh, xóa ảnh trên Cloudinary
+        if (category.image_public_id) {
+            try {
+                await cloudinary.uploader.destroy(category.image_public_id);
+            } catch (cloudinaryError) {
+                console.error('Lỗi khi xóa ảnh từ Cloudinary:', cloudinaryError);
+            }
+        }
+
+        // Xóa category trong database
         await Category.delete(categoryId);
 
         res.status(204).json({
@@ -92,8 +104,8 @@ exports.deleteCategory = async (req, res) => {
             data: null
         });
     } catch (error) {
-        res.status(400).json({
-            status: 'fail',
+        res.status(500).json({
+            status: 'error',
             message: error.message
         });
     }

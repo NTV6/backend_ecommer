@@ -1,5 +1,5 @@
 const Product = require('../models/Product');
-const { deleteImage } = require('../utils/cloudinary'); // Đường dẫn đến tệp cấu hình Cloudinary
+const cloudinary = require('../config/cloudinary'); // Đường dẫn đến tệp cấu hình Cloudinary
 
 exports.getAllProducts = async (req, res) => {
     try {
@@ -17,6 +17,7 @@ exports.getAllProducts = async (req, res) => {
         });
     }
 };
+
 exports.getProduct = async (req, res) => {
     try {
         const product = await Product.findById(req.params.id);
@@ -42,11 +43,11 @@ exports.getProduct = async (req, res) => {
 
 exports.createProduct = async (req, res) => {
     try {
-        const newProduct = await Product.create(req.body);
+        const product = await Product.create(req.body);
 
         res.status(201).json({
             status: 'success',
-            data: { product: newProduct }
+            data: { product }
         });
     } catch (error) {
         res.status(400).json({
@@ -74,29 +75,23 @@ exports.updateProduct = async (req, res) => {
 
 exports.deleteProduct = async (req, res) => {
     try {
-        const productId = req.params.id;
+        const { id } = req.params;
 
-        // Lấy public_id trước khi xóa sản phẩm
-        const publicId = await Product.findPublicIdById(productId);
+        // Lấy danh sách public_id cần xóa
+        const imagePublicIds = await Product.delete(id);
 
-        if (publicId) {
-            // Xóa ảnh từ Cloudinary
-            await deleteImage(publicId);
+        // Xóa ảnh trên Cloudinary
+        for (const publicId of imagePublicIds) {
+            try {
+                await cloudinary.uploader.destroy(publicId);
+            } catch (cloudinaryError) {
+                console.error('Error deleting image from Cloudinary:', cloudinaryError);
+            }
         }
 
-        // Xóa sản phẩm từ database
-        await Product.delete(productId);
-
-        res.status(204).json({
-            status: 'success',
-            data: null
-        });
+        res.status(200).json({ message: 'Product deleted successfully' });
     } catch (error) {
-        console.error('Lỗi khi xóa sản phẩm:', error);
-        res.status(400).json({
-            status: 'fail',
-            message: error.message
-        });
+        res.status(500).json({ error: error.message });
     }
 };
 
