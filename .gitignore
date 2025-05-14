@@ -1,2 +1,4 @@
 node_modules
 .env
+# Bỏ qua file Firebase service account
+src/firebase-service-account.json

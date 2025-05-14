@@ -8,7 +8,7 @@ const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '90d';
 class User {
     static async findAll() {
         try {
-            const [rows] = await db.query('SELECT id, name, email, role FROM users');
+            const [rows] = await db.query('SELECT id, email, role, full_name, phone_number, address, date_of_birth, profile_picture, created_at FROM users');
             return rows;
         } catch (error) {
             throw error;
@@ -17,7 +17,7 @@ class User {
 
     static async findById(id) {
         try {
-            const [rows] = await db.query('SELECT id, name, email, role FROM users WHERE id = ?', [id]);
+            const [rows] = await db.query('SELECT id, email, role, full_name, phone_number, address, date_of_birth, profile_picture, created_at FROM users WHERE id = ?', [id]);
             return rows[0];
         } catch (error) {
             throw error;
@@ -33,38 +33,61 @@ class User {
         }
     }
 
-    static async create(userData) {
+    static async createUser(userData) {
+        const {
+            uid,
+            full_name,
+            email,
+            phone_number,
+            address,
+            date_of_birth,
+            role,
+            profile_picture
+        } = userData;
+
+        const conn = await db.getConnection();
         try {
-            const { name, email, password, role = 'user' } = userData;
-
-            // Hash password
-            const salt = await bcrypt.genSalt(10);
-            const hashedPassword = await bcrypt.hash(password, salt);
-
-            const [result] = await db.query(
-                'INSERT INTO users (name, email, password, role) VALUES (?, ?, ?, ?)',
-                [name, email, hashedPassword, role]
+            await conn.beginTransaction();
+            // Log để debug
+            console.log('Inserting user data:', {
+                uid,
+                full_name,
+                email,
+                phone_number,
+                address,
+                date_of_birth,
+                role
+            });
+            const [result] = await conn.execute(
+                `INSERT INTO users (uid, full_name, email, phone_number, address, date_of_birth, role, profile_picture)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+                [uid, full_name, email, phone_number, address, date_of_birth, role || 'user', profile_picture]
             );
 
-            return {
-                id: result.insertId,
-                name,
-                email,
-                role
-            };
+            await conn.commit();
+            console.log('User created successfully:', result);
+            return result;
         } catch (error) {
+            await conn.rollback();
+            console.error('Error in createUser:', {
+                message: error.message,
+                code: error.code,
+                sqlMessage: error.sqlMessage
+            });
             throw error;
+        } finally {
+            conn.release();
         }
-    }
+    };
 
     static async update(id, userData) {
         try {
-            const { name, email, role } = userData;
+            const { username, email, role, full_name, phone_number, address, date_of_birth, profile_picture } = userData;
             await db.query(
-                'UPDATE users SET name = ?, email = ?, role = ? WHERE id = ?',
-                [name, email, role, id]
+                'UPDATE users SET email = ?, role = ?, full_name = ?, phone_number = ?, address = ?, date_of_birth = ?, profile_picture = ? WHERE id = ?',
+                [username, email, role, full_name, phone_number, address, date_of_birth, profile_picture, id]
             );
-            return { id, name, email, role };
+            return { id, username, email, role, full_name, phone_number, address, date_of_birth, profile_picture };
         } catch (error) {
             throw error;
         }

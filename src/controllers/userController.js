@@ -1,4 +1,5 @@
-const User = require('../models/User');
+const admin = require("../config/firebase");
+const User = require("../models/User");
 
 exports.getAllUsers = async (req, res) => {
     try {
@@ -90,21 +91,56 @@ exports.deleteUser = async (req, res) => {
 
 exports.signup = async (req, res) => {
     try {
-        const newUser = await User.create({
-            name: req.body.name,
-            email: req.body.email,
-            password: req.body.password,
-            role: req.body.role || 'user'
-        });
+        const {
+            token,
+            full_name,
+            email,
+            phone_number,
+            address,
+            date_of_birth,
+            profile_picture
+        } = req.body;
+
+        // Validate required fields
+        if (!token || !email || !full_name) {
+            return res.status(400).json({
+                status: 'error',
+                message: 'Missing required fields: token, email, full_name'
+            });
+        }
+
+        // Verify Firebase token
+        const decodedToken = await admin.auth().verifyIdToken(token);
+
+        // Create user in database
+        const userData = {
+            uid: decodedToken.uid,
+            email,
+            full_name,
+            phone_number: phone_number || null,
+            address: address || null,
+            date_of_birth: date_of_birth || null,
+            profile_picture: profile_picture || null,
+            role: 'user'
+        };
+
+        await User.createUser(userData);
 
         res.status(201).json({
             status: 'success',
-            data: { user: newUser }
+            message: 'User registered successfully',
+            data: {
+                uid: decodedToken.uid,
+                email,
+                full_name
+            }
         });
+
     } catch (error) {
-        res.status(400).json({
-            status: 'fail',
-            message: error.message
+        console.error('Signup error:', error);
+        res.status(500).json({
+            status: 'error',
+            message: error.message || 'Registration failed'
         });
     }
 };
