@@ -1,21 +1,14 @@
-const jwt = require('jsonwebtoken');
-const { promisify } = require('util');
-
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
+const admin = require('../config/firebase');
 
 exports.protect = async (req, res, next) => {
     try {
-
-
-        if (process.env.NODE_ENV === "development" || process.env.NODE_ENV === "test") {
-            req.user = { id: "test-user", role: "admin" }; // Gán user giả định để test
+        // Bỏ qua xác thực trong môi trường development
+        if (process.env.NODE_ENV === "development") {
+            req.user = { id: "test-user", role: "admin" };
             return next();
         }
 
-
-
-
-        // 1) Get token
+        // 1) Kiểm tra token
         let token;
         if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
             token = req.headers.authorization.split(' ')[1];
@@ -24,16 +17,15 @@ exports.protect = async (req, res, next) => {
         if (!token) {
             return res.status(401).json({
                 status: 'fail',
-                message: 'Bạn chưa đăng nhập! Vui lòng đăng nhập để tiếp tục.'
+                message: 'Vui lòng đăng nhập để tiếp tục'
             });
         }
 
-        // 2) Verify token
-        const decoded = await promisify(jwt.verify)(token, JWT_SECRET);
+        // 2) Xác thực token Firebase
+        const decodedToken = await admin.auth().verifyIdToken(token);
 
-        // 3) Check if user still exists (would require a database query in a real app)
-        // 4) Set user to req object
-        req.user = decoded;
+        // 3) Gán thông tin user vào request
+        req.user = decodedToken;
         next();
     } catch (err) {
         return res.status(401).json({

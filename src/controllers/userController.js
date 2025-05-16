@@ -165,11 +165,25 @@ exports.login = async (req, res) => {
 
 exports.getProfile = async (req, res) => {
     try {
-        const user = await User.findById(req.user.id);
+        // Lấy thông tin từ token đã decode trong middleware auth
+        const decodedToken = await admin.auth().verifyIdToken(req.headers.authorization.split(' ')[1]);
+
+        // Tìm user trong database bằng uid từ Firebase
+        const user = await User.findByUid(decodedToken.uid);
+
+        if (!user) {
+            return res.status(404).json({
+                status: 'fail',
+                message: 'Không tìm thấy thông tin người dùng'
+            });
+        }
+
+        // Loại bỏ các thông tin nhạy cảm
+        const { password, ...userInfo } = user;
 
         res.status(200).json({
             status: 'success',
-            data: { user }
+            data: userInfo
         });
     } catch (error) {
         res.status(500).json({

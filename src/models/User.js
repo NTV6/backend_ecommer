@@ -24,6 +24,20 @@ class User {
         }
     }
 
+    static async findByUid(uid) {
+        try {
+            const [rows] = await db.query(
+                `SELECT id, uid, email, full_name, phone_number, address, 
+             date_of_birth, profile_picture, role, created_at 
+             FROM users WHERE uid = ?`,
+                [uid]
+            );
+            return rows[0];
+        } catch (error) {
+            throw error;
+        }
+    }
+
     static async findByEmail(email) {
         try {
             const [rows] = await db.query('SELECT * FROM users WHERE email = ?', [email]);
