@@ -8,12 +8,16 @@ exports.protect = async (req, res, next) => {
             return next();
         }
 
+
+
+
+
         // 1) Kiểm tra token
         let token;
         if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
             token = req.headers.authorization.split(' ')[1];
         }
-
+        // 2. Kiểm tra token có tồn tại không
         if (!token) {
             return res.status(401).json({
                 status: 'fail',
@@ -21,13 +25,22 @@ exports.protect = async (req, res, next) => {
             });
         }
 
-        // 2) Xác thực token Firebase
+        // 3) Xác thực token Firebase
         const decodedToken = await admin.auth().verifyIdToken(token);
 
-        // 3) Gán thông tin user vào request
+        // 4. Kiểm tra uid có tồn tại không
+        if (!decodedToken.uid) {
+            return res.status(401).json({
+                status: 'error',
+                message: 'Token không hợp lệ'
+            });
+        }
+
+        // 5) Gán thông tin user vào request
         req.user = decodedToken;
         next();
     } catch (err) {
+        console.error('Auth error:', error);
         return res.status(401).json({
             status: 'fail',
             message: 'Token không hợp lệ hoặc đã hết hạn'
@@ -37,13 +50,10 @@ exports.protect = async (req, res, next) => {
 
 exports.restrictTo = (...roles) => {
     return (req, res, next) => {
-
-
-
-
         if (process.env.NODE_ENV === "development" || process.env.NODE_ENV === "test") {
             return next(); // Bỏ qua kiểm tra role khi test
         }
+
 
 
 

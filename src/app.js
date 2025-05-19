@@ -10,6 +10,7 @@ const userRoutes = require('./routes/userRoutes');
 const orderRoutes = require('./routes/orderRoutes');
 const categoryRoutes = require('./routes/categoryRoutes');
 const uploadRoutes = require('./routes/uploadRoutes');
+const cartRoutes = require('./routes/cartRoutes');
 
 const app = express();
 
@@ -22,8 +23,6 @@ app.use(cors({
 }));
 console.log("NODE_ENV hiện tại:", process.env.NODE_ENV);
 
-
-
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
@@ -33,6 +32,7 @@ app.use('/api/users', userRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/categories', categoryRoutes);
 app.use('/api/upload', uploadRoutes);
+app.use('/api/carts', cartRoutes);
 
 // Error handling middleware
 app.use(errorHandler);
