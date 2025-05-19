@@ -118,26 +118,26 @@ class User {
 
     static async login(email, password) {
         try {
-            // 1) Check if email and password exist
+            // 1) Kiểm tra xem email và mật khẩu có tồn tại không
             if (!email || !password) {
                 throw new Error('Vui lòng cung cấp email và mật khẩu!');
             }
 
-            // 2) Check if user exists && password is correct
+            // 2) Kiểm tra xem người dùng có tồn tại không và mật khẩu có đúng không
             const user = await this.findByEmail(email);
 
             if (!user || !(await bcrypt.compare(password, user.password))) {
                 throw new Error('Email hoặc mật khẩu không chính xác!');
             }
 
-            // 3) Generate JWT token
+            // 3) Tạo mã thông báo JWT
             const token = jwt.sign(
                 { id: user.id, role: user.role },
                 JWT_SECRET,
                 { expiresIn: JWT_EXPIRES_IN }
             );
 
-            // 4) Return user without password
+            // 4) Trả về người dùng mà không có mật khẩu
             const { password: _, ...userWithoutPassword } = user;
 
             return {

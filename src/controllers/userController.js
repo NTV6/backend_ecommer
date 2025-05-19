@@ -101,7 +101,7 @@ exports.signup = async (req, res) => {
             profile_picture
         } = req.body;
 
-        // Validate required fields
+        // Xác thực các trường bắt buộc
         if (!token || !email || !full_name) {
             return res.status(400).json({
                 status: 'error',
@@ -109,10 +109,10 @@ exports.signup = async (req, res) => {
             });
         }
 
-        // Verify Firebase token
+        // Xác minh mã thông báo Firebase
         const decodedToken = await admin.auth().verifyIdToken(token);
 
-        // Create user in database
+        // Tạo người dùng trong cơ sở dữ liệu
         const userData = {
             uid: decodedToken.uid,
             email,

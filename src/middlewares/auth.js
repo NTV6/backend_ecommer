@@ -2,21 +2,12 @@ const admin = require('../config/firebase');
 
 exports.protect = async (req, res, next) => {
     try {
-        // Bỏ qua xác thực trong môi trường development
-        if (process.env.NODE_ENV === "development") {
-            req.user = { id: "test-user", role: "admin" };
-            return next();
-        }
-
-
-
-
-
         // 1) Kiểm tra token
         let token;
         if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
             token = req.headers.authorization.split(' ')[1];
         }
+
         // 2. Kiểm tra token có tồn tại không
         if (!token) {
             return res.status(401).json({
@@ -50,14 +41,6 @@ exports.protect = async (req, res, next) => {
 
 exports.restrictTo = (...roles) => {
     return (req, res, next) => {
-        if (process.env.NODE_ENV === "development" || process.env.NODE_ENV === "test") {
-            return next(); // Bỏ qua kiểm tra role khi test
-        }
-
-
-
-
-
         if (!roles.includes(req.user.role)) {
             return res.status(403).json({
                 status: 'fail',
