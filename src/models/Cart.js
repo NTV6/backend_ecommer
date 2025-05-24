@@ -6,18 +6,21 @@ class Cart {
         try {
             const [items] = await conn.query(
                 `SELECT 
-                    ci.*,
-                    p.name as product_name,
-                    pv.color,
-                    pv.size,
-                    pv.price,
-                    pv.stock,
-                    pvi.image as image_url
-                FROM cart_items ci
-                JOIN products p ON ci.product_id = p.id
-                JOIN product_variants pv ON ci.variant_id = pv.id
-                LEFT JOIN product_variant_images pvi ON pv.id = pvi.variant_id
-                WHERE ci.user_id = ? AND pvi.is_thumbnail = 1`,
+                ci.*,
+                p.name as product_name,
+                pv.color,
+                pv.size,
+                pv.price,
+                pv.stock,
+                (SELECT pvi.image 
+                 FROM product_variant_images pvi 
+                 WHERE pvi.variant_id = ci.variant_id 
+                 AND pvi.is_thumbnail = 1 
+                 LIMIT 1) as image_url
+            FROM cart_items ci
+            JOIN products p ON ci.product_id = p.id
+            JOIN product_variants pv ON ci.variant_id = pv.id
+            WHERE ci.user_id = ?`,
                 [userId]
             );
             return items;

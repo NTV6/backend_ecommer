@@ -31,7 +31,7 @@ exports.protect = async (req, res, next) => {
         req.user = decodedToken;
         next();
     } catch (err) {
-        console.error('Auth error:', error);
+        console.error('Auth error:', err);
         return res.status(401).json({
             status: 'fail',
             message: 'Token không hợp lệ hoặc đã hết hạn'
