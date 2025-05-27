@@ -1,4 +1,5 @@
 const admin = require('../config/firebase');
+const db = require('../config/database');
 
 exports.protect = async (req, res, next) => {
     try {
@@ -27,8 +28,28 @@ exports.protect = async (req, res, next) => {
             });
         }
 
+        // 5) Lấy user từ database dựa vào firebase uid
+        const [user] = await db.execute(
+            'SELECT id, uid, role FROM users WHERE uid = ?',
+            [decodedToken.uid]
+        );
+
+        if (!user || !user.length) {
+            return res.status(401).json({
+                status: 'fail',
+                message: 'User không tồn tại trong hệ thống'
+            });
+        }
+
+        // 6) Gán thông tin user vào request
+        req.user = {
+            id: user[0].id,        // database user id
+            uid: user[0].uid,      // firebase uid
+            role: user[0].role
+        };
+
         // 5) Gán thông tin user vào request
-        req.user = decodedToken;
+        // req.user = decodedToken;
         next();
     } catch (err) {
         console.error('Auth error:', err);

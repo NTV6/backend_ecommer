@@ -1,88 +1,117 @@
 const db = require('../config/database');
 
 class Order {
-    static async findAll() {
-        try {
-            const [rows] = await db.query(`
-        SELECT o.*, u.name as user_name 
-        FROM orders o
-        JOIN users u ON o.user_id = u.id
-      `);
-            return rows;
-        } catch (error) {
-            throw error;
-        }
-    }
-
-    static async findById(id) {
-        try {
-            const [orderRows] = await db.query(`
-        SELECT o.*, u.name as user_name 
-        FROM orders o
-        JOIN users u ON o.user_id = u.id
-        WHERE o.id = ?
-      `, [id]);
-
-            const order = orderRows[0];
-
-            if (!order) return null;
-
-            const [itemRows] = await db.query(`
-        SELECT oi.*, p.name as product_name, p.price as product_price
-        FROM order_items oi
-        JOIN products p ON oi.product_id = p.id
-        WHERE oi.order_id = ?
-      `, [id]);
-
-            order.items = itemRows;
-
-            return order;
-        } catch (error) {
-            throw error;
-        }
-    }
-
-    static async findByUserId(userId) {
-        try {
-            const [rows] = await db.query('SELECT * FROM orders WHERE user_id = ?', [userId]);
-            return rows;
-        } catch (error) {
-            throw error;
-        }
-    }
-
     static async create(orderData) {
         const conn = await db.getConnection();
-
         try {
             await conn.beginTransaction();
 
-            const { user_id, status = 'pending', total_amount, items } = orderData;
+            const {
+                user_id,
+                shipping_address,
+                phone_number,
+                total_amount,
+                payment_method,
+                items
+            } = orderData;
 
-            // Create order
+            // Tạo đơn hàng
             const [orderResult] = await conn.query(
-                'INSERT INTO orders (user_id, status, total_amount, created_at) VALUES (?, ?, ?, NOW())',
-                [user_id, status, total_amount]
+                `INSERT INTO orders (
+                    user_id, 
+                    shipping_address, 
+                    phone_number, 
+                    total_amount, 
+                    payment_method,
+                    payment_status,
+                    order_status
+                ) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+                [user_id, shipping_address, phone_number, total_amount, payment_method, 'pending', 'processing']
             );
-
             const orderId = orderResult.insertId;
 
-            // Create order items
+            // Insert order items
             for (const item of items) {
                 await conn.query(
-                    'INSERT INTO order_items (order_id, product_id, quantity, price) VALUES (?, ?, ?, ?)',
-                    [orderId, item.product_id, item.quantity, item.price]
+                    `INSERT INTO order_items (
+                        order_id, 
+                        product_id, 
+                        variant_id, 
+                        quantity, 
+                        price
+                    ) VALUES (?, ?, ?, ?, ?)`,
+                    [orderId, item.product_id, item.variant_id, item.quantity, item.price]
                 );
 
-                // Update product stock
+                // Update product variant stock
                 await conn.query(
-                    'UPDATE products SET stock = stock - ? WHERE id = ?',
-                    [item.quantity, item.product_id]
+                    'UPDATE product_variants SET stock = stock - ? WHERE id = ?',
+                    [item.quantity, item.variant_id]
                 );
             }
 
-            await conn.commit();
+            // Clear user's cart
+            await conn.query('DELETE FROM cart_items WHERE user_id = ?', [user_id]);
 
+            await conn.commit();
+            return orderId;
+        } catch (error) {
+            await conn.rollback();
+            throw error;
+        } finally {
+            conn.release();
+        }
+    }
+
+    static async findById(orderId) {
+        const [orders] = await db.query(
+            `SELECT o.*, oi.*, p.name as product_name, pv.color, pv.size
+         FROM orders o
+         LEFT JOIN order_items oi ON o.id = oi.order_id
+         LEFT JOIN products p ON oi.product_id = p.id
+         LEFT JOIN product_variants pv ON oi.variant_id = pv.id
+         WHERE o.id = ?`,
+            [orderId]
+        );
+
+        if (!orders.length) return null;
+
+        const orderDetails = {
+            ...orders[0],
+            items: orders.map(item => ({
+                product_id: item.product_id,
+                variant_id: item.variant_id,
+                quantity: item.quantity,
+                price: item.price,
+                product_name: item.product_name,
+                color: item.color,
+                size: item.size
+            }))
+        };
+
+        // Remove duplicated fields from root level
+        delete orderDetails.product_id;
+        delete orderDetails.variant_id;
+        delete orderDetails.quantity;
+        delete orderDetails.price;
+        delete orderDetails.product_name;
+        delete orderDetails.color;
+        delete orderDetails.size;
+
+        return orderDetails;
+    }
+
+    static async updatePaymentStatus(orderId, status) {
+        const conn = await db.getConnection();
+        try {
+            await conn.beginTransaction();
+
+            await conn.query(
+                'UPDATE orders SET payment_status = ? WHERE id = ?',
+                [status, orderId]
+            );
+
+            await conn.commit();
             return await this.findById(orderId);
         } catch (error) {
             await conn.rollback();
@@ -92,13 +121,12 @@ class Order {
         }
     }
 
-    static async updateStatus(id, status) {
-        try {
-            await db.query('UPDATE orders SET status = ? WHERE id = ?', [status, id]);
-            return await this.findById(id);
-        } catch (error) {
-            throw error;
-        }
+    static async getOrderByTxnRef(txnRef) {
+        const [orders] = await db.query(
+            'SELECT * FROM orders WHERE id = ?',
+            [txnRef]
+        );
+        return orders[0];
     }
 }
 

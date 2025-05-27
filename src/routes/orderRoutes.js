@@ -1,20 +1,10 @@
 const express = require('express');
 const router = express.Router();
 const orderController = require('../controllers/orderController');
-const { protect, restrictTo } = require('../middlewares/auth');
+const { protect } = require('../middlewares/auth');
 
-router
-    .route('/')
-    .get(protect, restrictTo('admin'), orderController.getAllOrders)
-    .post(protect, orderController.createOrder);
-
-router
-    .route('/:id')
-    .get(protect, orderController.getOrder)
-    .patch(protect, restrictTo('admin'), orderController.updateOrderStatus);
-
-router
-    .route('/user/:userId')
-    .get(protect, orderController.getUserOrders);
+router.post('/cod', protect, orderController.createCodOrder);
+router.post('/vnpay', protect, orderController.createVnpayOrder);
+router.get('/vnpay/callback', orderController.vnpayCallback);
 
 module.exports = router;

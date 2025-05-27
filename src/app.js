@@ -20,7 +20,6 @@ app.use(cors({
     allowedHeaders: ['Content-Type', 'Authorization'],
     credentials: true
 }));
-console.log("NODE_ENV hiện tại:", process.env.NODE_ENV);
 
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));

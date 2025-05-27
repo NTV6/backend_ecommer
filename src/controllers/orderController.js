@@ -1,93 +1,142 @@
+const Cart = require('../models/Cart');
 const Order = require('../models/Order');
+const VNPayService = require('../services/vnpayService');
+const { ApiError } = require('../middlewares/error');
 
-exports.getAllOrders = async (req, res) => {
+const createCodOrder = async (req, res, next) => {
     try {
-        const orders = await Order.findAll();
+        const userId = req.user.id;  // Sử dụng database user id thay vì firebase uid
+        // console.log('User data:', req.user);
+        // console.log('Creating order for user:', userId);
+        const { shipping_address, phone_number } = req.body;
 
-        res.status(200).json({
-            status: 'success',
-            results: orders.length,
-            data: { orders }
-        });
-    } catch (error) {
-        res.status(500).json({
-            status: 'error',
-            message: error.message
-        });
-    }
-};
-
-exports.getOrder = async (req, res) => {
-    try {
-        const order = await Order.findById(req.params.id);
-
-        if (!order) {
-            return res.status(404).json({
-                status: 'fail',
-                message: 'Không tìm thấy đơn hàng với ID này'
-            });
+        // Xác thực đầu vào
+        if (!shipping_address || !phone_number) {
+            throw new ApiError(400, 'Missing required fields');
         }
 
-        res.status(200).json({
-            status: 'success',
-            data: { order }
-        });
-    } catch (error) {
-        res.status(500).json({
-            status: 'error',
-            message: error.message
-        });
-    }
-};
+        // Get các mặt hàng trong giỏ hàng
+        const cartItems = await Cart.getCartByUserId(userId);
+        // console.log('Cart items retrieved:', cartItems);
+        if (!cartItems.length) {
+            throw new ApiError(400, 'Cart is empty');
+        }
 
-exports.getUserOrders = async (req, res) => {
-    try {
-        const orders = await Order.findByUserId(req.params.userId);
+        // Tính tổng số tiền
+        const total_amount = cartItems.reduce((sum, item) => {
+            return sum + (item.price * item.quantity);
+        }, 0);
 
-        res.status(200).json({
-            status: 'success',
-            results: orders.length,
-            data: { orders }
+        // Tạo đơn hàng
+        const orderId = await Order.create({
+            user_id: userId,  // Sử dụng database user id
+            shipping_address,
+            phone_number,
+            total_amount,
+            payment_method: 'COD',
+            items: cartItems.map(item => ({
+                product_id: item.product_id,
+                variant_id: item.variant_id,
+                quantity: item.quantity,
+                price: item.price
+            }))
         });
-    } catch (error) {
-        res.status(500).json({
-            status: 'error',
-            message: error.message
-        });
-    }
-};
 
-exports.createOrder = async (req, res) => {
-    try {
-        const newOrder = await Order.create({
-            ...req.body,
-            user_id: req.user.id // Lấy từ middleware auth
-        });
+        const order = await Order.findById(orderId);
 
         res.status(201).json({
             status: 'success',
-            data: { order: newOrder }
+            message: 'Order created successfully',
+            data: order
         });
+
     } catch (error) {
-        res.status(400).json({
-            status: 'fail',
-            message: error.message
-        });
+        next(error instanceof ApiError ? error : new ApiError(500, error.message));
     }
 };
 
-exports.updateOrderStatus = async (req, res) => {
+const createVnpayOrder = async (req, res, next) => {
     try {
-        const order = await Order.updateStatus(req.params.id, req.body.status);
+        const userId = req.user.id;
+        const { shipping_address, phone_number } = req.body;
+
+        if (!shipping_address || !phone_number) {
+            throw new ApiError(400, 'Missing required fields');
+        }
+
+        const cartItems = await Cart.getCartByUserId(userId);
+        if (!cartItems.length) {
+            throw new ApiError(400, 'Cart is empty');
+        }
+
+        const total_amount = cartItems.reduce((sum, item) => {
+            return sum + (item.price * item.quantity);
+        }, 0);
+
+        const orderId = await Order.create({
+            user_id: userId,
+            shipping_address,
+            phone_number,
+            total_amount,
+            payment_method: 'VNPAY',
+            items: cartItems.map(item => ({
+                product_id: item.product_id,
+                variant_id: item.variant_id,
+                quantity: item.quantity,
+                price: item.price
+            }))
+        });
+
+        const paymentUrl = VNPayService.createPaymentUrl(
+            orderId,
+            total_amount,
+            req.ip
+        );
 
         res.status(200).json({
             status: 'success',
-            data: { order }
+            data: {
+                paymentUrl
+            }
         });
+
     } catch (error) {
-        res.status(400).json({
-            status: 'fail',
-            message: error.message
-        });
+        next(error instanceof ApiError ? error : new ApiError(500, error.message));
     }
+};
+
+const vnpayCallback = async (req, res, next) => {
+    try {
+        const vnpParams = req.query;
+        const isValidSignature = VNPayService.validateCallback(vnpParams);
+
+        if (!isValidSignature) {
+            throw new ApiError(400, 'Invalid signature');
+        }
+
+        const orderId = vnpParams['vnp_TxnRef'];
+        const responseCode = vnpParams['vnp_ResponseCode'];
+
+        const order = await Order.getOrderByTxnRef(orderId);
+        if (!order) {
+            throw new ApiError(404, 'Order not found');
+        }
+
+        if (responseCode === '00') {
+            await Order.updatePaymentStatus(orderId, 'completed');
+            res.redirect(`${process.env.URL_FRONTEND}/checkout/success?orderId=${orderId}`);
+        } else {
+            await Order.updatePaymentStatus(orderId, 'failed');
+            res.redirect(`${process.env.URL_FRONTEND}/checkout/failed?orderId=${orderId}`);
+        }
+
+    } catch (error) {
+        next(error instanceof ApiError ? error : new ApiError(500, error.message));
+    }
+};
+
+module.exports = {
+    createCodOrder,
+    createVnpayOrder,
+    vnpayCallback
 };

@@ -11,14 +11,15 @@ exports.addToCart = async (req, res) => {
                 message: 'Thiếu thông tin sản phẩm'
             });
         }
-        console.log('Adding to cart:', {
-            userId: req.user.uid,
-            productId,
-            variantId,
-            quantity
-        });
+        // console.log('Adding to cart:', {
+        //     userId: req.user.id,
+        //     productId,
+        //     variantId,
+        //     quantity
+        // });
+
         // Lấy ID người dùng từ auth middleware
-        const userId = req.user.uid;
+        const userId = req.user.id;
 
         // Thêm vào giỏ hàng và nhận giỏ hàng cập nhật
         const cartItems = await Cart.addToCart(
@@ -43,7 +44,7 @@ exports.addToCart = async (req, res) => {
 
 exports.getCart = async (req, res) => {
     try {
-        const items = await Cart.getCartByUserId(req.user.uid);
+        const items = await Cart.getCartByUserId(req.user.id);
         res.status(200).json({
             status: 'success',
             data: { items }
@@ -69,7 +70,7 @@ exports.updateQuantity = async (req, res) => {
         }
 
         const cartItems = await Cart.updateQuantity(
-            req.user.uid,
+            req.user.id,
             parseInt(productId),
             parseInt(variantId),
             parseInt(quantity)
@@ -93,7 +94,7 @@ exports.removeFromCart = async (req, res) => {
         const { productId, variantId } = req.params;
 
         const cartItems = await Cart.removeFromCart(
-            req.user.uid,
+            req.user.id,
             parseInt(productId),
             parseInt(variantId)
         );
@@ -113,7 +114,7 @@ exports.removeFromCart = async (req, res) => {
 
 exports.clearCart = async (req, res) => {
     try {
-        await Cart.clearCart(req.user.uid);
+        await Cart.clearCart(req.user.id);
 
         res.status(200).json({
             status: 'success',
