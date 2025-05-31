@@ -62,24 +62,12 @@ class User {
         const conn = await db.getConnection();
         try {
             await conn.beginTransaction();
-            // Log để debug
-            console.log('Inserting user data:', {
-                uid,
-                full_name,
-                email,
-                phone_number,
-                address,
-                date_of_birth,
-                role
-            });
             const [result] = await conn.execute(
                 `INSERT INTO users (uid, full_name, email, phone_number, address, date_of_birth, role, profile_picture)
              VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
                 [uid, full_name, email, phone_number, address, date_of_birth, role || 'user', profile_picture]
             );
-
             await conn.commit();
-            console.log('User created successfully:', result);
             return result;
         } catch (error) {
             await conn.rollback();
@@ -96,12 +84,25 @@ class User {
 
     static async update(id, userData) {
         try {
-            const { username, email, role, full_name, phone_number, address, date_of_birth, profile_picture } = userData;
+            const { email, role, full_name, phone_number, address, date_of_birth, profile_picture } = userData;
             await db.query(
                 'UPDATE users SET email = ?, role = ?, full_name = ?, phone_number = ?, address = ?, date_of_birth = ?, profile_picture = ? WHERE id = ?',
-                [username, email, role, full_name, phone_number, address, date_of_birth, profile_picture, id]
+                [email, role, full_name, phone_number, address, date_of_birth, profile_picture, id]
             );
-            return { id, username, email, role, full_name, phone_number, address, date_of_birth, profile_picture };
+            return { id, email, role, full_name, phone_number, address, date_of_birth, profile_picture };
+        } catch (error) {
+            throw error;
+        }
+    }
+
+    static async updateProfile(id, userData) {
+        try {
+            const { profile_picture } = userData;
+            await db.query(
+                'UPDATE users SET profile_picture = ? WHERE id = ?',
+                [profile_picture, id]
+            );
+            return { id, profile_picture };
         } catch (error) {
             throw error;
         }

@@ -192,3 +192,49 @@ exports.getProfile = async (req, res) => {
         });
     }
 };
+
+exports.updateProfile = async (req, res) => {
+    try {
+        // Nhận ID người dùng Firebase từ mã thông báo được xác thực
+        const decodedToken = await admin.auth().verifyIdToken(req.headers.authorization.split(' ')[1]);
+
+        // Tìm người dùng theo UID Firebase
+        const existingUser = await User.findByUid(decodedToken.uid);
+
+        if (!existingUser) {
+            return res.status(404).json({
+                status: 'fail',
+                message: 'Không tìm thấy người dùng'
+            });
+        }
+
+        // Cập nhật chỉ các trường được phép
+        const allowedFields = {
+            full_name: req.body.full_name,
+            phone_number: req.body.phone_number,
+            address: req.body.address,
+            date_of_birth: req.body.date_of_birth,
+            profile_picture: req.body.profile_picture
+        };
+
+        // Xóa các trường không xác định
+        Object.keys(allowedFields).forEach(key =>
+            allowedFields[key] === undefined && delete allowedFields[key]
+        );
+
+        // Cập nhật người dùng trong cơ sở dữ liệu
+        const updatedUser = await User.updateProfile(existingUser.id, allowedFields);
+
+        res.status(200).json({
+            status: 'success',
+            data: {
+                user: updatedUser
+            }
+        });
+    } catch (error) {
+        res.status(500).json({
+            status: 'error',
+            message: error.message || 'Error updating profile'
+        });
+    }
+};

@@ -5,12 +5,16 @@ const { protect, restrictTo } = require('../middlewares/auth');
 
 router.post('/signup', userController.signup);
 router.post('/login', userController.login);
-router.get('/profile', protect, userController.getProfile);
 
 router
     .route('/')
     .get(protect, restrictTo('admin'), userController.getAllUsers)
     .post(protect, restrictTo('admin'), userController.createUser);
+
+router
+    .route('/profile')
+    .get(protect, userController.getProfile)
+    .patch(protect, userController.updateProfile);
 
 router
     .route('/:id')
