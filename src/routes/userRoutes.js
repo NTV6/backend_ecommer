@@ -13,8 +13,15 @@ router
 
 router
     .route('/profile')
-    .get(protect, userController.getProfile)
-    .patch(protect, userController.updateProfile);
+    .get(protect, userController.getProfile);
+
+router
+    .route('/profile/image')
+    .patch(protect, userController.updateImageProfile);
+
+router
+    .route('/profile/info')
+    .patch(protect, userController.updateInfoProfile);
 
 router
     .route('/:id')

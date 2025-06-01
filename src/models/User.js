@@ -82,20 +82,20 @@ class User {
         }
     };
 
-    static async update(id, userData) {
+    static async updateInfoProfile(id, userData) {
         try {
-            const { email, role, full_name, phone_number, address, date_of_birth, profile_picture } = userData;
+            const { full_name, phone_number, address, date_of_birth } = userData;
             await db.query(
-                'UPDATE users SET email = ?, role = ?, full_name = ?, phone_number = ?, address = ?, date_of_birth = ?, profile_picture = ? WHERE id = ?',
-                [email, role, full_name, phone_number, address, date_of_birth, profile_picture, id]
+                'UPDATE users SET full_name = ?, phone_number = ?, address = ?, date_of_birth = ? WHERE id = ?',
+                [full_name, phone_number, address, date_of_birth, id]
             );
-            return { id, email, role, full_name, phone_number, address, date_of_birth, profile_picture };
+            return { id, full_name, phone_number, address, date_of_birth };
         } catch (error) {
             throw error;
         }
     }
 
-    static async updateProfile(id, userData) {
+    static async updateImageProfile(id, userData) {
         try {
             const { profile_picture } = userData;
             await db.query(
