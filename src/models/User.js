@@ -59,37 +59,84 @@ class User {
             profile_picture
         } = userData;
 
+        // Validate phone number format
+        if (phone_number) {
+            const phoneRegex = /^0\d{9}$/;
+            if (!phoneRegex.test(phone_number)) {
+                throw new Error('Số điện thoại không hợp lệ');
+            }
+
+            // Check if phone number already exists
+            const [existingPhone] = await db.execute(
+                'SELECT id FROM users WHERE phone_number = ?',
+                [phone_number]
+            );
+
+            if (existingPhone.length > 0) {
+                throw new Error('Số điện thoại đã được sử dụng');
+            }
+        }
+
         const conn = await db.getConnection();
         try {
             await conn.beginTransaction();
             const [result] = await conn.execute(
                 `INSERT INTO users (uid, full_name, email, phone_number, address, date_of_birth, role, profile_picture)
              VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-                [uid, full_name, email, phone_number, address, date_of_birth, role || 'user', profile_picture]
+                [
+                    uid,
+                    full_name,
+                    email,
+                    phone_number || '',
+                    address || '',
+                    date_of_birth || null,
+                    role || 'user',
+                    profile_picture || ''
+                ]
             );
             await conn.commit();
             return result;
         } catch (error) {
             await conn.rollback();
-            console.error('Error in createUser:', {
-                message: error.message,
-                code: error.code,
-                sqlMessage: error.sqlMessage
-            });
+            if (error.code === 'ER_DUP_ENTRY') {
+                throw new Error('Số điện thoại đã được sử dụng');
+            }
             throw error;
         } finally {
             conn.release();
         }
-    };
+    }
 
     static async updateInfoProfile(id, userData) {
         try {
             const { full_name, phone_number, address, date_of_birth } = userData;
+
+            // Validate phone number format
+            if (phone_number) {
+                const cleanPhoneNumber = phone_number.trim();
+                const phoneRegex = /^0\d{9}$/;
+                if (!phoneRegex.test(cleanPhoneNumber)) {
+                    throw new Error('Số điện thoại phải có 10 số và bắt đầu bằng số 0');
+                }
+
+                // Check if phone number already exists for other users
+                const [existingPhone] = await db.execute(
+                    'SELECT id FROM users WHERE phone_number = ? AND id != ?',
+                    [cleanPhoneNumber, id]
+                );
+
+                if (existingPhone.length > 0) {
+                    throw new Error('Số điện thoại đã được sử dụng');
+                }
+
+                userData.phone_number = cleanPhoneNumber;
+            }
+
             await db.query(
                 'UPDATE users SET full_name = ?, phone_number = ?, address = ?, date_of_birth = ? WHERE id = ?',
-                [full_name, phone_number, address, date_of_birth, id]
+                [full_name, userData.phone_number || '', address || '', date_of_birth || null, id]
             );
-            return { id, full_name, phone_number, address, date_of_birth };
+            return { id, full_name, phone_number: userData.phone_number, address, date_of_birth };
         } catch (error) {
             throw error;
         }

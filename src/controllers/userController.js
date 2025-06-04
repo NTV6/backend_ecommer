@@ -112,15 +112,30 @@ exports.signup = async (req, res) => {
         // Xác minh mã thông báo Firebase
         const decodedToken = await admin.auth().verifyIdToken(token);
 
-        // Tạo người dùng trong cơ sở dữ liệu
+        // Kiểm tra xem người dùng đã tồn tại chưa
+        const existingUser = await User.findByUid(decodedToken.uid);
+        if (existingUser) {
+            // Nếu người dùng đã tồn tại, trả về thông tin người dùng
+            return res.status(200).json({
+                status: 'success',
+                message: 'Người dùng đã tồn tại',
+                data: {
+                    uid: existingUser.uid,
+                    email: existingUser.email,
+                    full_name: existingUser.full_name
+                }
+            });
+        }
+
+        // Tạo người dùng mới trong cơ sở dữ liệu
         const userData = {
             uid: decodedToken.uid,
             email,
             full_name,
-            phone_number: phone_number || null,
-            address: address || null,
-            date_of_birth: date_of_birth || null,
-            profile_picture: profile_picture || null,
+            phone_number: phone_number || '',  // Đặt giá trị mặc định là chuỗi rỗng
+            address: address || '',            // Đặt giá trị mặc định là chuỗi rỗng
+            date_of_birth: date_of_birth || null,  // Đặt giá trị mặc định là null
+            profile_picture: profile_picture || '', // Đặt giá trị mặc định là chuỗi rỗng
             role: 'user'
         };
 
