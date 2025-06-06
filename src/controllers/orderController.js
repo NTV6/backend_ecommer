@@ -3,6 +3,36 @@ const Order = require('../models/Order');
 const VNPayService = require('../services/vnpayService');
 const { ApiError } = require('../middlewares/error');
 
+const getAllOrders = async (req, res, next) => {
+    try {
+        const orders = await Order.getAllOrders();
+        res.status(200).json({
+            status: 'success',
+            data: orders
+        });
+    } catch (error) {
+        next(error instanceof ApiError ? error : new ApiError(500, error.message));
+    }
+};
+
+const getOrderDetails = async (req, res, next) => {
+    try {
+        const { orderId } = req.params;
+        const order = await Order.findById(orderId);
+
+        if (!order) {
+            throw new ApiError(404, 'Order not found');
+        }
+
+        res.status(200).json({
+            status: 'success',
+            data: order
+        });
+    } catch (error) {
+        next(error instanceof ApiError ? error : new ApiError(500, error.message));
+    }
+};
+
 const createCodOrder = async (req, res, next) => {
     try {
         const userId = req.user.id;  // Sử dụng database user id thay vì firebase uid
@@ -135,8 +165,40 @@ const vnpayCallback = async (req, res, next) => {
     }
 };
 
+const updateOrderStatus = async (req, res, next) => {
+    try {
+        const { orderId } = req.params;
+        const { status } = req.body;
+
+        if (!status) {
+            throw new ApiError(400, 'Status is required');
+        }
+
+        const validStatuses = ['pending', 'processing', 'delivered', 'cancelled', 'shipping'];
+        if (!validStatuses.includes(status)) {
+            throw new ApiError(400, 'Invalid status');
+        }
+
+        const updatedOrder = await Order.updateOrderStatus(orderId, status);
+
+        if (!updatedOrder) {
+            throw new ApiError(404, 'Order not found');
+        }
+
+        res.status(200).json({
+            status: 'success',
+            data: updatedOrder
+        });
+    } catch (error) {
+        next(error instanceof ApiError ? error : new ApiError(500, error.message));
+    }
+};
+
 module.exports = {
     createCodOrder,
     createVnpayOrder,
-    vnpayCallback
+    vnpayCallback,
+    getAllOrders,
+    updateOrderStatus,
+    getOrderDetails
 };
