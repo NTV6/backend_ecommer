@@ -15,15 +15,6 @@ class User {
         }
     }
 
-    static async findById(id) {
-        try {
-            const [rows] = await db.query('SELECT id, email, role, full_name, phone_number, address, date_of_birth, profile_picture, created_at FROM users WHERE id = ?', [id]);
-            return rows[0];
-        } catch (error) {
-            throw error;
-        }
-    }
-
     static async findByUid(uid) {
         try {
             const [rows] = await db.query(
@@ -32,15 +23,6 @@ class User {
              FROM users WHERE uid = ?`,
                 [uid]
             );
-            return rows[0];
-        } catch (error) {
-            throw error;
-        }
-    }
-
-    static async findByEmail(email) {
-        try {
-            const [rows] = await db.query('SELECT * FROM users WHERE email = ?', [email]);
             return rows[0];
         } catch (error) {
             throw error;
@@ -195,6 +177,19 @@ class User {
         } catch (error) {
             throw error;
         }
+    }
+
+    static async updateRole(userId, role) {
+        const [result] = await db.query(
+            'UPDATE users SET role = ? WHERE id = ?',
+            [role, userId]
+        );
+
+        if (result.affectedRows === 0) {
+            return null;
+        }
+
+        return this.findById(userId);
     }
 }
 

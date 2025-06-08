@@ -9,7 +9,6 @@ router.post('/login', userController.login);
 router
     .route('/')
     .get(protect, restrictTo('admin'), userController.getAllUsers)
-    .post(protect, restrictTo('admin'), userController.createUser);
 
 router
     .route('/profile')
@@ -25,8 +24,8 @@ router
 
 router
     .route('/:id')
-    .get(protect, restrictTo('admin'), userController.getUser)
-    .patch(protect, restrictTo('admin'), userController.updateUser)
     .delete(protect, restrictTo('admin'), userController.deleteUser);
+
+router.patch('/:userId/role', protect, restrictTo('admin'), userController.updateUserRole);
 
 module.exports = router;

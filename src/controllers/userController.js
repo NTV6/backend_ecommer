@@ -18,61 +18,6 @@ exports.getAllUsers = async (req, res) => {
     }
 };
 
-exports.getUser = async (req, res) => {
-    try {
-        const user = await User.findById(req.params.id);
-
-        if (!user) {
-            return res.status(404).json({
-                status: 'fail',
-                message: 'Không tìm thấy người dùng với ID này'
-            });
-        }
-
-        res.status(200).json({
-            status: 'success',
-            data: { user }
-        });
-    } catch (error) {
-        res.status(500).json({
-            status: 'error',
-            message: error.message
-        });
-    }
-};
-
-exports.createUser = async (req, res) => {
-    try {
-        const newUser = await User.create(req.body);
-
-        res.status(201).json({
-            status: 'success',
-            data: { user: newUser }
-        });
-    } catch (error) {
-        res.status(400).json({
-            status: 'fail',
-            message: error.message
-        });
-    }
-};
-
-exports.updateUser = async (req, res) => {
-    try {
-        const user = await User.update(req.params.id, req.body);
-
-        res.status(200).json({
-            status: 'success',
-            data: { user }
-        });
-    } catch (error) {
-        res.status(400).json({
-            status: 'fail',
-            message: error.message
-        });
-    }
-};
-
 exports.deleteUser = async (req, res) => {
     try {
         await User.delete(req.params.id);
@@ -291,6 +236,39 @@ exports.updateInfoProfile = async (req, res) => {
         res.status(500).json({
             status: 'error',
             message: error.message || 'Error updating profile'
+        });
+    }
+};
+
+exports.updateUserRole = async (req, res) => {
+    try {
+        const { userId } = req.params;
+        const { role } = req.body;
+
+        if (!['user', 'admin'].includes(role)) {
+            return res.status(400).json({
+                status: 'error',
+                message: 'Vai trò không hợp lệ'
+            });
+        }
+
+        const updatedUser = await User.updateRole(userId, role);
+
+        if (!updatedUser) {
+            return res.status(404).json({
+                status: 'error',
+                message: 'Không tìm thấy người dùng'
+            });
+        }
+
+        res.status(200).json({
+            status: 'success',
+            data: updatedUser
+        });
+    } catch (error) {
+        res.status(500).json({
+            status: 'error',
+            message: error.message
         });
     }
 };
