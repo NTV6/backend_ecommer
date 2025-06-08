@@ -18,29 +18,6 @@ exports.getAllCategories = async (req, res) => {
     }
 };
 
-exports.getCategory = async (req, res) => {
-    try {
-        const category = await Category.findById(req.params.id);
-
-        if (!category) {
-            return res.status(404).json({
-                status: 'fail',
-                message: 'Không tìm thấy danh mục với ID này'
-            });
-        }
-
-        res.status(200).json({
-            status: 'success',
-            data: { category }
-        });
-    } catch (error) {
-        res.status(500).json({
-            status: 'error',
-            message: error.message
-        });
-    }
-};
-
 exports.createCategory = async (req, res) => {
     try {
         const newCategory = await Category.create(req.body);

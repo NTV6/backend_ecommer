@@ -10,7 +10,6 @@ router
 
 router
     .route('/:id')
-    .get(categoryController.getCategory)
     .patch(protect, restrictTo('admin'), categoryController.updateCategory)
     .delete(protect, restrictTo('admin'), categoryController.deleteCategory);
 

@@ -19,15 +19,6 @@ class Category {
         }
     }
 
-    static async findPublicIdById(id) {
-        try {
-            const [rows] = await db.query('SELECT image_public_id FROM categories WHERE id = ?', [id]);
-            return rows[0]?.image_public_id;
-        } catch (error) {
-            throw error;
-        }
-    }
-
     static async create(categoryData) {
         try {
             const { name, description, image, image_public_id } = categoryData;

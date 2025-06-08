@@ -11,12 +11,6 @@ exports.addToCart = async (req, res) => {
                 message: 'Thiếu thông tin sản phẩm'
             });
         }
-        // console.log('Adding to cart:', {
-        //     userId: req.user.id,
-        //     productId,
-        //     variantId,
-        //     quantity
-        // });
 
         // Lấy ID người dùng từ auth middleware
         const userId = req.user.id;
