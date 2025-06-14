@@ -15,19 +15,35 @@ class User {
         }
     }
 
-    static async findByUid(uid) {
+    static async findById(id) {
         try {
-            const [rows] = await db.query(
-                `SELECT id, uid, email, full_name, phone_number, address, 
-             date_of_birth, profile_picture, role, created_at 
-             FROM users WHERE uid = ?`,
-                [uid]
-            );
+            const [rows] = await db.query('SELECT id, email, role, full_name, phone_number, address, date_of_birth, profile_picture, created_at FROM users WHERE id = ?', [id]);
             return rows[0];
         } catch (error) {
             throw error;
         }
     }
+
+    static async findByUid(uid) {
+        try {
+            const [rows] = await db.query(`SELECT id, uid, email, full_name, phone_number, address, date_of_birth, profile_picture, role, created_at FROM users WHERE uid = ?`, [uid]);
+            return rows[0];
+        } catch (error) {
+            throw error;
+        }
+    }
+
+    // static async findByEmail(email) {
+    //     try {
+    //         const [rows] = await db.query(
+    //             'SELECT id, email, password, role, full_name, phone_number, address, date_of_birth, profile_picture FROM users WHERE email = ?',
+    //             [email]
+    //         );
+    //         return rows[0];
+    //     } catch (error) {
+    //         throw error;
+    //     }
+    // }
 
     static async createUser(userData) {
         const {

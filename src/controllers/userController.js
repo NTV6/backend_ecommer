@@ -18,17 +18,31 @@ exports.getAllUsers = async (req, res) => {
     }
 };
 
-exports.deleteUser = async (req, res) => {
+exports.getProfile = async (req, res) => {
     try {
-        await User.delete(req.params.id);
+        // Lấy thông tin từ token đã decode trong middleware auth
+        const decodedToken = await admin.auth().verifyIdToken(req.headers.authorization.split(' ')[1]);
 
-        res.status(204).json({
+        // Tìm user trong database bằng uid từ Firebase
+        const user = await User.findByUid(decodedToken.uid);
+
+        if (!user) {
+            return res.status(404).json({
+                status: 'fail',
+                message: 'Không tìm thấy thông tin người dùng'
+            });
+        }
+
+        // Loại bỏ các thông tin nhạy cảm
+        const { password, ...userInfo } = user;
+
+        res.status(200).json({
             status: 'success',
-            data: null
+            data: userInfo
         });
     } catch (error) {
-        res.status(400).json({
-            status: 'fail',
+        res.status(500).json({
+            status: 'error',
             message: error.message
         });
     }
@@ -118,36 +132,6 @@ exports.login = async (req, res) => {
     } catch (error) {
         res.status(401).json({
             status: 'fail',
-            message: error.message
-        });
-    }
-};
-
-exports.getProfile = async (req, res) => {
-    try {
-        // Lấy thông tin từ token đã decode trong middleware auth
-        const decodedToken = await admin.auth().verifyIdToken(req.headers.authorization.split(' ')[1]);
-
-        // Tìm user trong database bằng uid từ Firebase
-        const user = await User.findByUid(decodedToken.uid);
-
-        if (!user) {
-            return res.status(404).json({
-                status: 'fail',
-                message: 'Không tìm thấy thông tin người dùng'
-            });
-        }
-
-        // Loại bỏ các thông tin nhạy cảm
-        const { password, ...userInfo } = user;
-
-        res.status(200).json({
-            status: 'success',
-            data: userInfo
-        });
-    } catch (error) {
-        res.status(500).json({
-            status: 'error',
             message: error.message
         });
     }
@@ -268,6 +252,22 @@ exports.updateUserRole = async (req, res) => {
     } catch (error) {
         res.status(500).json({
             status: 'error',
+            message: error.message
+        });
+    }
+};
+
+exports.deleteUser = async (req, res) => {
+    try {
+        await User.delete(req.params.id);
+
+        res.status(204).json({
+            status: 'success',
+            data: null
+        });
+    } catch (error) {
+        res.status(400).json({
+            status: 'fail',
             message: error.message
         });
     }

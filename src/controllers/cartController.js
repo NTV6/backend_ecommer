@@ -1,5 +1,21 @@
 const Cart = require('../models/Cart');
 
+exports.getCart = async (req, res) => {
+    try {
+        const items = await Cart.getCartByUserId(req.user.id);
+        res.status(200).json({
+            status: 'success',
+            data: { items }
+        });
+    } catch (error) {
+        console.error('Get cart error:', error);
+        res.status(500).json({
+            status: 'error',
+            message: error.message
+        });
+    }
+};
+
 exports.addToCart = async (req, res) => {
     try {
         const { productId, variantId, quantity } = req.body;
@@ -29,22 +45,6 @@ exports.addToCart = async (req, res) => {
         });
     } catch (error) {
         console.error('Add to cart error:', error);
-        res.status(500).json({
-            status: 'error',
-            message: error.message
-        });
-    }
-};
-
-exports.getCart = async (req, res) => {
-    try {
-        const items = await Cart.getCartByUserId(req.user.id);
-        res.status(200).json({
-            status: 'success',
-            data: { items }
-        });
-    } catch (error) {
-        console.error('Get cart error:', error);
         res.status(500).json({
             status: 'error',
             message: error.message
