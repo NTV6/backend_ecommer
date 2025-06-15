@@ -224,6 +224,41 @@ class Order {
             conn.release();
         }
     }
+
+    static async cancelOrder(orderId) {
+        const conn = await db.getConnection();
+        try {
+            await conn.beginTransaction();
+
+            // Lấy thông tin đơn hàng và các items
+            const [orderItems] = await conn.query(
+                'SELECT * FROM order_items WHERE order_id = ?',
+                [orderId]
+            );
+
+            // Hoàn lại số lượng cho product variants
+            for (const item of orderItems) {
+                await conn.query(
+                    'UPDATE product_variants SET stock = stock + ? WHERE id = ?',
+                    [item.quantity, item.variant_id]
+                );
+            }
+
+            // Cập nhật trạng thái đơn hàng
+            await conn.query(
+                'UPDATE orders SET order_status = ? WHERE id = ?',
+                ['cancelled', orderId]
+            );
+
+            await conn.commit();
+            return await this.findById(orderId);
+        } catch (error) {
+            await conn.rollback();
+            throw error;
+        } finally {
+            conn.release();
+        }
+    }
 }
 
 module.exports = Order;

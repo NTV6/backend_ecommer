@@ -208,6 +208,38 @@ const updateOrderStatus = async (req, res, next) => {
     }
 };
 
+const cancelOrder = async (req, res, next) => {
+    try {
+        const { orderId } = req.params;
+        const userId = req.user.id;
+
+        // Kiểm tra đơn hàng tồn tại và thuộc về user
+        const order = await Order.findById(orderId);
+        if (!order) {
+            throw new ApiError(404, 'Order not found');
+        }
+        if (order.user_id !== userId) {
+            throw new ApiError(403, 'Not authorized to cancel this order');
+        }
+
+        // Chỉ cho phép hủy đơn hàng ở trạng thái pending hoặc processing
+        if (!['pending', 'processing'].includes(order.order_status)) {
+            throw new ApiError(400, 'Order cannot be cancelled');
+        }
+
+        // Cập nhật trạng thái đơn hàng
+        const updatedOrder = await Order.cancelOrder(orderId);
+
+        res.status(200).json({
+            status: 'success',
+            message: 'Order cancelled successfully',
+            data: updatedOrder
+        });
+    } catch (error) {
+        next(error instanceof ApiError ? error : new ApiError(500, error.message));
+    }
+};
+
 module.exports = {
     createCodOrder,
     createVnpayOrder,
@@ -215,5 +247,6 @@ module.exports = {
     getAllOrders,
     updateOrderStatus,
     getOrderDetails,
-    getUserOrders
+    getUserOrders,
+    cancelOrder
 };

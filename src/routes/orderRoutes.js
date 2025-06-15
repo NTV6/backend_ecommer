@@ -12,5 +12,6 @@ router.get('/myorders', protect, orderController.getUserOrders);
 router.get('/all', protect, restrictTo('admin'), orderController.getAllOrders);
 router.get('/:orderId', protect, orderController.getOrderDetails);
 router.patch('/:orderId/status', protect, restrictTo('admin'), orderController.updateOrderStatus);
+router.post('/:orderId/cancel', protect, orderController.cancelOrder);
 
 module.exports = router;
