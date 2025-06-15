@@ -57,6 +57,64 @@ class Order {
         return orders;
     }
 
+    static async getOrdersByUserId(userId) {
+        const [rows] = await db.query(`
+        SELECT 
+            o.id, o.shipping_address, o.phone_number, o.total_amount,
+            o.payment_method, o.payment_status, o.order_status, o.created_at,
+            oi.product_id, oi.quantity, oi.price,
+            p.name AS product_name,
+            pv.color, pv.size,
+            u.full_name AS user_name,
+            (SELECT image FROM product_variant_images 
+             WHERE variant_id = oi.variant_id AND is_thumbnail = 1 
+             LIMIT 1) AS thumbnail_image
+        FROM orders o
+        LEFT JOIN order_items oi ON o.id = oi.order_id
+        LEFT JOIN products p ON oi.product_id = p.id
+        LEFT JOIN product_variants pv ON oi.variant_id = pv.id
+        LEFT JOIN users u ON o.user_id = u.id
+        WHERE o.user_id = ?
+        ORDER BY o.created_at DESC, o.id
+    `, [userId]);
+
+        const ordersMap = new Map();
+
+        for (const row of rows) {
+            if (!ordersMap.has(row.id)) {
+                ordersMap.set(row.id, {
+                    id: row.id,
+                    shipping_address: row.shipping_address,
+                    phone_number: row.phone_number,
+                    total_amount: row.total_amount,
+                    payment_method: row.payment_method,
+                    payment_status: row.payment_status,
+                    order_status: row.order_status,
+                    created_at: row.created_at,
+                    user_name: row.user_name,
+                    items: []
+                });
+            }
+
+            if (row.product_id) {
+                ordersMap.get(row.id).items.push({
+                    product_name: row.product_name,
+                    quantity: row.quantity,
+                    price: row.price,
+                    color: row.color,
+                    size: row.size,
+                    image: row.thumbnail_image
+                });
+            }
+        }
+
+        return Array.from(ordersMap.values()).map(order => ({
+            ...order,
+            total_items: order.items.length,
+            total_quantity: order.items.reduce((sum, i) => sum + i.quantity, 0)
+        }));
+    }
+
     static async getOrderByTxnRef(txnRef) {
         const [orders] = await db.query(
             'SELECT * FROM orders WHERE id = ?',

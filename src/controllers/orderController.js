@@ -33,6 +33,20 @@ const getOrderDetails = async (req, res, next) => {
     }
 };
 
+const getUserOrders = async (req, res, next) => {
+    try {
+        const userId = req.user.id;
+        const orders = await Order.getOrdersByUserId(userId);
+
+        res.status(200).json({
+            status: 'success',
+            data: orders
+        });
+    } catch (error) {
+        next(error instanceof ApiError ? error : new ApiError(500, error.message));
+    }
+};
+
 const createCodOrder = async (req, res, next) => {
     try {
         const userId = req.user.id;  // Sử dụng database user id thay vì firebase uid
@@ -200,5 +214,6 @@ module.exports = {
     vnpayCallback,
     getAllOrders,
     updateOrderStatus,
-    getOrderDetails
+    getOrderDetails,
+    getUserOrders
 };

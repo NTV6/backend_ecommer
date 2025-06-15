@@ -6,6 +6,7 @@ const { protect, restrictTo } = require('../middlewares/auth');
 router.post('/cod', protect, orderController.createCodOrder);
 router.post('/vnpay', protect, orderController.createVnpayOrder);
 router.get('/vnpay/callback', orderController.vnpayCallback);
+router.get('/myorders', protect, orderController.getUserOrders);
 
 // Các routes cho admin
 router.get('/all', protect, restrictTo('admin'), orderController.getAllOrders);
