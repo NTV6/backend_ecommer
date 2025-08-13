@@ -4,7 +4,10 @@ class Order {
     static async findById(orderId) {
         const [orders] = await db.query(
             `SELECT o.*, oi.*, p.name as product_name, pv.color, pv.size,
-            u.full_name as user_name, u.email as user_email
+            u.full_name as user_name, u.email as user_email,
+            (SELECT image FROM product_variant_images 
+             WHERE variant_id = oi.variant_id AND is_thumbnail = 1 
+             LIMIT 1) AS image
          FROM orders o
          LEFT JOIN order_items oi ON o.id = oi.order_id
          LEFT JOIN products p ON oi.product_id = p.id
@@ -20,24 +23,19 @@ class Order {
         const orderDetails = {
             id: orders[0].id,
             order_id: orders[0].order_id,
-            user_id: orders[0].user_id,
             user_name: orders[0].user_name,
-            user_email: orders[0].user_email,
             shipping_address: orders[0].shipping_address,
             phone_number: orders[0].phone_number,
             total_amount: orders[0].total_amount,
-            payment_method: orders[0].payment_method,
-            payment_status: orders[0].payment_status,
             order_status: orders[0].order_status,
             created_at: orders[0].created_at,
             items: orders.map(item => ({
-                product_id: item.product_id,
-                variant_id: item.variant_id,
                 quantity: item.quantity,
                 price: item.price,
                 product_name: item.product_name,
                 color: item.color,
-                size: item.size
+                size: item.size,
+                image: item.image,
             }))
         };
 
@@ -68,7 +66,7 @@ class Order {
             u.full_name AS user_name,
             (SELECT image FROM product_variant_images 
              WHERE variant_id = oi.variant_id AND is_thumbnail = 1 
-             LIMIT 1) AS thumbnail_image
+             LIMIT 1) AS image
         FROM orders o
         LEFT JOIN order_items oi ON o.id = oi.order_id
         LEFT JOIN products p ON oi.product_id = p.id
@@ -103,7 +101,7 @@ class Order {
                     price: row.price,
                     color: row.color,
                     size: row.size,
-                    image: row.thumbnail_image
+                    image: row.image
                 });
             }
         }
