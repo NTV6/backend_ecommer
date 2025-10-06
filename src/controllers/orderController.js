@@ -108,15 +108,20 @@ const createVnpayOrder = async (req, res, next) => {
             throw new ApiError(400, 'Missing required fields');
         }
 
+        // Validate cart
         const cartItems = await Cart.getCartByUserId(userId);
         if (!cartItems.length) {
             throw new ApiError(400, 'Cart is empty');
         }
 
-        const total_amount = cartItems.reduce((sum, item) => {
-            return sum + (item.price * item.quantity);
-        }, 0);
+        // Validate amount
+        const total_amount = cartItems.reduce((sum, item) =>
+            sum + (item.price * item.quantity), 0);
+        if (total_amount <= 0) {
+            throw new ApiError(400, 'Invalid order amount');
+        }
 
+        // Create order
         const orderId = await Order.create({
             user_id: userId,
             shipping_address,
@@ -131,18 +136,23 @@ const createVnpayOrder = async (req, res, next) => {
             }))
         });
 
-        const paymentUrl = VNPayService.createPaymentUrl(
-            orderId,
-            total_amount,
-            req.ip
-        );
+        // Create VNPay URL with error handling
+        try {
+            const paymentUrl = VNPayService.createPaymentUrl(
+                orderId,
+                total_amount,
+                req.ip
+            );
 
-        res.status(200).json({
-            status: 'success',
-            data: {
-                paymentUrl
-            }
-        });
+            res.status(200).json({
+                status: 'success',
+                data: { paymentUrl }
+            });
+        } catch (error) {
+            // Rollback order if VNPay URL creation fails
+            await Order.cancelOrder(orderId);
+            throw new ApiError(500, 'Payment service unavailable');
+        }
 
     } catch (error) {
         next(error instanceof ApiError ? error : new ApiError(500, error.message));
@@ -152,30 +162,65 @@ const createVnpayOrder = async (req, res, next) => {
 const vnpayCallback = async (req, res, next) => {
     try {
         const vnpParams = req.query;
-        const isValidSignature = VNPayService.validateCallback(vnpParams);
+        console.log('VNPay params:', vnpParams);
 
+        // Validate signature
+        const isValidSignature = VNPayService.validateCallback(vnpParams);
         if (!isValidSignature) {
-            throw new ApiError(400, 'Invalid signature');
+            console.error('Invalid VNPay signature');
+            return res.redirect(`${process.env.URL_FRONTEND}/checkout/failed?error=invalid_signature`);
         }
 
         const orderId = vnpParams['vnp_TxnRef'];
         const responseCode = vnpParams['vnp_ResponseCode'];
+        const transactionNo = vnpParams['vnp_TransactionNo'];
 
+        console.log('VNPay callback data:', {
+            orderId,
+            responseCode,
+            transactionNo
+        });
+
+        // Get order
         const order = await Order.getOrderByTxnRef(orderId);
+        console.log('Order before update:', order);
         if (!order) {
-            throw new ApiError(404, 'Order not found');
+            console.error('Order not found:', orderId);
+            return res.redirect(`${process.env.URL_FRONTEND}/checkout/failed?error=order_not_found`);
+        }
+
+        // Check if order already processed
+        if (order.payment_status === 'completed') {
+            return res.redirect(`${process.env.URL_FRONTEND}/checkout/success`);
         }
 
         if (responseCode === '00') {
+            // Cập nhật trạng thái thanh toán và đơn hàng
             await Order.updatePaymentStatus(orderId, 'completed');
-            res.redirect(`${process.env.URL_FRONTEND}/checkout/success?orderId=${orderId}`);
-        } else {
-            await Order.updatePaymentStatus(orderId, 'failed');
-            res.redirect(`${process.env.URL_FRONTEND}/checkout/failed?orderId=${orderId}`);
-        }
+            await Order.updateOrderStatus(orderId, 'processing');
+            console.log('Update result:', await Order.updatePaymentStatus(orderId, 'completed'));
+            // Log successful transaction
+            console.log('Payment completed successfully:', {
+                orderId,
+                transactionNo
+            });
 
+            return res.redirect(`${process.env.URL_FRONTEND}/checkout/success`);
+        } else {
+            // Cập nhật trạng thái thất bại
+            await Order.updatePaymentStatus(orderId, 'failed');
+            await Order.updateOrderStatus(orderId, 'cancelled');
+
+            console.error('Payment failed:', {
+                orderId,
+                responseCode
+            });
+
+            return res.redirect(`${process.env.URL_FRONTEND}/checkout/failed?code=${responseCode}`);
+        }
     } catch (error) {
-        next(error instanceof ApiError ? error : new ApiError(500, error.message));
+        console.error('VNPay callback error:', error);
+        return res.redirect(`${process.env.URL_FRONTEND}/checkout/failed?error=${error.message}`);
     }
 };
 

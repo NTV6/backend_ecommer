@@ -57,8 +57,9 @@ class User {
             profile_picture
         } = userData;
 
-        // Validate phone number format
-        if (phone_number) {
+        // Chỉ validate phone number khi người dùng có nhập
+        if (phone_number && phone_number.trim() !== '') {
+            // Validate phone number format
             const phoneRegex = /^0\d{9}$/;
             if (!phoneRegex.test(phone_number)) {
                 throw new Error('Số điện thoại không hợp lệ');
@@ -66,7 +67,7 @@ class User {
 
             // Check if phone number already exists
             const [existingPhone] = await db.execute(
-                'SELECT id FROM users WHERE phone_number = ?',
+                'SELECT id FROM users WHERE phone_number = ? AND phone_number != ""',
                 [phone_number]
             );
 
@@ -80,12 +81,12 @@ class User {
             await conn.beginTransaction();
             const [result] = await conn.execute(
                 `INSERT INTO users (uid, full_name, email, phone_number, address, date_of_birth, role, profile_picture)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
                 [
                     uid,
                     full_name,
                     email,
-                    phone_number || '',
+                    phone_number || null,  // Nếu không có số điện thoại thì lưu chuỗi rỗng
                     address || '',
                     date_of_birth || null,
                     role || 'user',

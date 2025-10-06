@@ -188,15 +188,22 @@ class Order {
         try {
             await conn.beginTransaction();
 
-            await conn.query(
+            const [result] = await conn.query(
                 'UPDATE orders SET payment_status = ? WHERE id = ?',
                 [status, orderId]
             );
+
+            if (result.affectedRows === 0) {
+                throw new Error('Order not found or not updated');
+            }
+
+            console.log(`Payment status updated for order ${orderId} to ${status}`);
 
             await conn.commit();
             return await this.findById(orderId);
         } catch (error) {
             await conn.rollback();
+            console.error('Error updating payment status:', error);
             throw error;
         } finally {
             conn.release();
