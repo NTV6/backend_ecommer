@@ -28,6 +28,9 @@ class Order {
             phone_number: orders[0].phone_number,
             total_amount: orders[0].total_amount,
             order_status: orders[0].order_status,
+            payment_method: orders[0].payment_method,
+            payment_status: orders[0].payment_status,
+            full_name: orders[0].full_name,
             created_at: orders[0].created_at,
             items: orders.map(item => ({
                 quantity: item.quantity,
@@ -128,6 +131,7 @@ class Order {
 
             const {
                 user_id,
+                full_name,
                 shipping_address,
                 phone_number,
                 total_amount,
@@ -139,14 +143,15 @@ class Order {
             const [orderResult] = await conn.query(
                 `INSERT INTO orders (
                     user_id, 
+                    full_name,  
                     shipping_address, 
                     phone_number, 
                     total_amount, 
                     payment_method,
                     payment_status,
                     order_status
-                ) VALUES (?, ?, ?, ?, ?, ?, ?)`,
-                [user_id, shipping_address, phone_number, total_amount, payment_method, 'pending', 'processing']
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+                [user_id, full_name, shipping_address, phone_number, total_amount, payment_method, 'pending', 'processing']
             );
             const orderId = orderResult.insertId;
 

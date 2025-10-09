@@ -52,10 +52,10 @@ const createCodOrder = async (req, res, next) => {
         const userId = req.user.id;  // Sử dụng database user id thay vì firebase uid
         // console.log('User data:', req.user);
         // console.log('Creating order for user:', userId);
-        const { shipping_address, phone_number } = req.body;
+        const { shipping_address, phone_number, full_name } = req.body;
 
         // Xác thực đầu vào
-        if (!shipping_address || !phone_number) {
+        if (!shipping_address || !phone_number || !full_name) {
             throw new ApiError(400, 'Missing required fields');
         }
 
@@ -74,6 +74,7 @@ const createCodOrder = async (req, res, next) => {
         // Tạo đơn hàng
         const orderId = await Order.create({
             user_id: userId,  // Sử dụng database user id
+            full_name,
             shipping_address,
             phone_number,
             total_amount,
@@ -102,9 +103,9 @@ const createCodOrder = async (req, res, next) => {
 const createVnpayOrder = async (req, res, next) => {
     try {
         const userId = req.user.id;
-        const { shipping_address, phone_number } = req.body;
+        const { shipping_address, phone_number, full_name } = req.body;
 
-        if (!shipping_address || !phone_number) {
+        if (!shipping_address || !phone_number || !full_name) {
             throw new ApiError(400, 'Missing required fields');
         }
 
@@ -124,6 +125,7 @@ const createVnpayOrder = async (req, res, next) => {
         // Create order
         const orderId = await Order.create({
             user_id: userId,
+            full_name,
             shipping_address,
             phone_number,
             total_amount,

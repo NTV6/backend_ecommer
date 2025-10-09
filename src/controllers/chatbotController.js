@@ -22,6 +22,7 @@ const chatbotController = {
 
             // Format dữ liệu sản phẩm với thông tin danh mục
             const productsData = products.map(p => ({
+                id: p.id,
                 name: p.name,
                 description: p.description,
                 category: categoriesData.find(c => c.id === p.category_id),
@@ -36,8 +37,10 @@ const chatbotController = {
 
             const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
-            // Cải thiện prompt với thông tin danh mục
+            // Cải thiện prompt để trả về JSON có cấu trúc
             const prompt = `
+            Bạn là trợ lý mua sắm thông minh. Hãy phân tích câu hỏi và trả lời theo định dạng JSON.
+
             Context: 
             1. Danh mục sản phẩm:
             ${JSON.stringify(categoriesData, null, 2)}
@@ -45,26 +48,82 @@ const chatbotController = {
             2. Thông tin chi tiết sản phẩm:
             ${JSON.stringify(productsData, null, 2)}
             
-            Khi người dùng hỏi về sản phẩm hoặc danh mục, hãy:
-            1. Nếu hỏi về danh mục: Liệt kê các sản phẩm trong danh mục đó
-            2. Nếu hỏi về sản phẩm cụ thể:
-               - Mô tả sản phẩm
-               - Cho biết thuộc danh mục nào
-               - Cung cấp giá và các biến thể có sẵn
-               - Cung cấp links ảnh sản phẩm
-            3. Trả lời ngắn gọn và chính xác
-            4. Nếu không tìm thấy thông tin, thông báo "Xin lỗi, tôi không tìm thấy thông tin về điều bạn hỏi"
+            Hãy trả về JSON với cấu trúc sau:
+            {
+                "type": "category_list" | "product_detail" | "product_list" | "general_response",
+                "message": "Nội dung trả lời văn bản",
+                "data": {
+                    // Nếu type = "category_list":
+                    "categories": [{ "id": 1, "name": "Tên danh mục", "productCount": 5 }]
+                    
+                    // Nếu type = "product_list":
+                    "products": [{ 
+                        "id": 1,
+                        "name": "Tên sản phẩm",
+                        "description": "Mô tả",
+                        "category": "Tên danh mục",
+                        "priceRange": { "min": 100000, "max": 200000 },
+                        "image": "url_ảnh_đầu_tiên",
+                        "inStock": true
+                    }]
+                    
+                    // Nếu type = "product_detail":
+                    "product": {
+                        "id": 1,
+                        "name": "Tên sản phẩm",
+                        "description": "Mô tả",
+                        "category": "Tên danh mục",
+                        "variants": [{
+                            "color": "Đỏ",
+                            "size": "M",
+                            "price": 150000,
+                            "stock": 10,
+                            "images": ["url1", "url2"]
+                        }]
+                    }
+                }
+            }
 
-            Câu hỏi người dùng: ${message}
+            Quy tắc:
+            1. Nếu hỏi về danh mục → type = "category_list" hoặc "product_list"
+            2. Nếu hỏi về sản phẩm cụ thể → type = "product_detail"
+            3. Nếu câu hỏi chung (chào hỏi, hướng dẫn) → type = "general_response"
+            4. Luôn trả về JSON hợp lệ
+            5. message phải rõ ràng, thân thiện
+            6. Nếu không tìm thấy, trả type = "general_response" với message thông báo
+
+            Câu hỏi: ${message}
+            
+            Chỉ trả về JSON, không thêm text nào khác.
             `;
 
             const result = await model.generateContent(prompt);
             const response = await result.response;
+            let responseText = response.text().trim();
 
-            res.json({ response: response.text() });
+            // Xử lý response để đảm bảo là JSON hợp lệ
+            // Loại bỏ markdown code block nếu có
+            responseText = responseText.replace(/```json\n?/g, '').replace(/```\n?/g, '');
+
+            try {
+                const parsedResponse = JSON.parse(responseText);
+                res.json(parsedResponse);
+            } catch (parseError) {
+                // Nếu không parse được JSON, trả về format mặc định
+                console.error('JSON parse error:', parseError);
+                res.json({
+                    type: 'general_response',
+                    message: responseText,
+                    data: null
+                });
+            }
         } catch (error) {
             console.error('Chatbot error:', error);
-            res.status(500).json({ error: 'Internal server error' });
+            res.status(500).json({
+                type: 'error',
+                message: 'Xin lỗi, đã có lỗi xảy ra. Vui lòng thử lại sau.',
+                data: null
+            });
         }
     }
 };
