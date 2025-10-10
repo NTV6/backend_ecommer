@@ -202,8 +202,6 @@ class Order {
                 throw new Error('Order not found or not updated');
             }
 
-            console.log(`Payment status updated for order ${orderId} to ${status}`);
-
             await conn.commit();
             return await this.findById(orderId);
         } catch (error) {

@@ -49,31 +49,25 @@ const getUserOrders = async (req, res, next) => {
 
 const createCodOrder = async (req, res, next) => {
     try {
-        const userId = req.user.id;  // Sử dụng database user id thay vì firebase uid
-        // console.log('User data:', req.user);
-        // console.log('Creating order for user:', userId);
+        const userId = req.user.id;
         const { shipping_address, phone_number, full_name } = req.body;
 
-        // Xác thực đầu vào
         if (!shipping_address || !phone_number || !full_name) {
             throw new ApiError(400, 'Missing required fields');
         }
 
-        // Get các mặt hàng trong giỏ hàng
         const cartItems = await Cart.getCartByUserId(userId);
-        // console.log('Cart items retrieved:', cartItems);
         if (!cartItems.length) {
             throw new ApiError(400, 'Cart is empty');
         }
 
-        // Tính tổng số tiền
         const total_amount = cartItems.reduce((sum, item) => {
             return sum + (item.price * item.quantity);
         }, 0);
 
         // Tạo đơn hàng
         const orderId = await Order.create({
-            user_id: userId,  // Sử dụng database user id
+            user_id: userId,
             full_name,
             shipping_address,
             phone_number,
@@ -155,7 +149,6 @@ const createVnpayOrder = async (req, res, next) => {
             await Order.cancelOrder(orderId);
             throw new ApiError(500, 'Payment service unavailable');
         }
-
     } catch (error) {
         next(error instanceof ApiError ? error : new ApiError(500, error.message));
     }
@@ -164,7 +157,6 @@ const createVnpayOrder = async (req, res, next) => {
 const vnpayCallback = async (req, res, next) => {
     try {
         const vnpParams = req.query;
-        console.log('VNPay params:', vnpParams);
 
         // Validate signature
         const isValidSignature = VNPayService.validateCallback(vnpParams);
@@ -177,15 +169,9 @@ const vnpayCallback = async (req, res, next) => {
         const responseCode = vnpParams['vnp_ResponseCode'];
         const transactionNo = vnpParams['vnp_TransactionNo'];
 
-        console.log('VNPay callback data:', {
-            orderId,
-            responseCode,
-            transactionNo
-        });
-
         // Get order
         const order = await Order.getOrderByTxnRef(orderId);
-        console.log('Order before update:', order);
+
         if (!order) {
             console.error('Order not found:', orderId);
             return res.redirect(`${process.env.URL_FRONTEND}/checkout/failed?error=order_not_found`);
@@ -193,36 +179,27 @@ const vnpayCallback = async (req, res, next) => {
 
         // Check if order already processed
         if (order.payment_status === 'completed') {
-            return res.redirect(`${process.env.URL_FRONTEND}/checkout/success`);
+            return res.redirect(`${process.env.URL_FRONTEND}/checkout/success?vnp_ResponseCode=${responseCode}&vnp_TxnRef=${orderId}`);
         }
 
         if (responseCode === '00') {
-            // Cập nhật trạng thái thanh toán và đơn hàng
             await Order.updatePaymentStatus(orderId, 'completed');
-            await Order.updateOrderStatus(orderId, 'processing');
-            console.log('Update result:', await Order.updatePaymentStatus(orderId, 'completed'));
-            // Log successful transaction
-            console.log('Payment completed successfully:', {
-                orderId,
-                transactionNo
-            });
 
-            return res.redirect(`${process.env.URL_FRONTEND}/checkout/success`);
+            await Order.updateOrderStatus(orderId, 'processing');
+
+            return res.redirect(`${process.env.URL_FRONTEND}/checkout/success?vnp_ResponseCode=${responseCode}&vnp_TxnRef=${orderId}`);
         } else {
             // Cập nhật trạng thái thất bại
             await Order.updatePaymentStatus(orderId, 'failed');
             await Order.updateOrderStatus(orderId, 'cancelled');
 
-            console.error('Payment failed:', {
-                orderId,
-                responseCode
-            });
+            console.error('Payment failed:', { orderId, responseCode });
 
             return res.redirect(`${process.env.URL_FRONTEND}/checkout/failed?code=${responseCode}`);
         }
     } catch (error) {
         console.error('VNPay callback error:', error);
-        return res.redirect(`${process.env.URL_FRONTEND}/checkout/failed?error=${error.message}`);
+        return res.redirect(`${process.env.URL_FRONTEND}/checkout/failed?error=${encodeURIComponent(error.message)}`);
     }
 };
 
