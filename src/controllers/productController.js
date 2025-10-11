@@ -1,5 +1,5 @@
 const Product = require('../models/Product');
-const cloudinary = require('../config/cloudinary'); // Đường dẫn đến tệp cấu hình Cloudinary
+const cloudinary = require('../config/cloudinary');
 
 exports.getAllProducts = async (req, res) => {
     try {

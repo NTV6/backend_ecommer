@@ -111,9 +111,8 @@ class Product {
         try {
             await conn.beginTransaction();
 
-            // 1. Insert product
             const [productRes] = await conn.execute(
-                'INSERT INTO products (name, category_id, description) VALUES (?, ?, ?)',
+                'INSERT INTO products (name, category_id, description, created_at) VALUES (?, ?, ?, NOW())',
                 [name.trim(), Number(category_id), description.trim()]
             );
             const productId = productRes.insertId;
@@ -155,9 +154,8 @@ class Product {
         try {
             await conn.beginTransaction();
 
-            // 1. Cập nhật thông tin cơ bản của sản phẩm
             await conn.execute(
-                'UPDATE products SET name = ?, description = ?, category_id = ? WHERE id = ?',
+                'UPDATE products SET name = ?, description = ?, category_id = ?, updated_at = NOW() WHERE id = ?',
                 [name?.trim(), description?.trim(), Number(category_id), id]
             );
 

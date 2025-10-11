@@ -63,6 +63,7 @@ class Order {
         SELECT 
             o.id, o.shipping_address, o.phone_number, o.total_amount,
             o.payment_method, o.payment_status, o.order_status, o.created_at,
+            o.full_name,
             oi.product_id, oi.quantity, oi.price,
             p.name AS product_name,
             pv.color, pv.size,
@@ -85,6 +86,7 @@ class Order {
             if (!ordersMap.has(row.id)) {
                 ordersMap.set(row.id, {
                     id: row.id,
+                    order_id: row.id,
                     shipping_address: row.shipping_address,
                     phone_number: row.phone_number,
                     total_amount: row.total_amount,
@@ -93,6 +95,7 @@ class Order {
                     order_status: row.order_status,
                     created_at: row.created_at,
                     user_name: row.user_name,
+                    full_name: row.full_name,
                     items: []
                 });
             }

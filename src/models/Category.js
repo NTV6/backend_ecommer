@@ -21,12 +21,25 @@ class Category {
 
     static async create(categoryData) {
         try {
-            const { name, description, image, image_public_id } = categoryData;
+            const {
+                name,
+                description = '',
+                image = '',
+                image_public_id = ''
+            } = categoryData;
+
             const [result] = await db.query(
-                'INSERT INTO categories (name, description, image, image_public_id) VALUES (?, ?, ?, ?)',
+                'INSERT INTO categories (name, description, image, image_public_id, created_at) VALUES (?, ?, ?, ?, NOW())',
                 [name, description, image, image_public_id]
             );
-            return { id: result.insertId, name, description, image, image_public_id };
+
+            // Lấy lại record vừa tạo để có đầy đủ thông tin
+            const [newCategory] = await db.query(
+                'SELECT * FROM categories WHERE id = ?',
+                [result.insertId]
+            );
+
+            return newCategory[0];
         } catch (error) {
             throw error;
         }
@@ -34,12 +47,25 @@ class Category {
 
     static async update(id, categoryData) {
         try {
-            const { name, description, image, image_public_id } = categoryData;
+            const {
+                name,
+                description = '',
+                image = '',
+                image_public_id = ''
+            } = categoryData;
+
             await db.query(
-                'UPDATE categories SET name = ?, description = ?, image=?, image_public_id=? WHERE id = ?',
+                'UPDATE categories SET name = ?, description = ?, image = ?, image_public_id = ? WHERE id = ?',
                 [name, description, image, image_public_id, id]
             );
-            return { id, name, description, image, image_public_id };
+
+            // Lấy lại record sau khi update
+            const [updatedCategory] = await db.query(
+                'SELECT * FROM categories WHERE id = ?',
+                [id]
+            );
+
+            return updatedCategory[0];
         } catch (error) {
             throw error;
         }

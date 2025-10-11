@@ -157,19 +157,17 @@ const createVnpayOrder = async (req, res, next) => {
 const vnpayCallback = async (req, res, next) => {
     try {
         const vnpParams = req.query;
+        const responseCode = vnpParams['vnp_ResponseCode'];
 
         // Validate signature
         const isValidSignature = VNPayService.validateCallback(vnpParams);
         if (!isValidSignature) {
             console.error('Invalid VNPay signature');
-            return res.redirect(`${process.env.URL_FRONTEND}/checkout/failed?error=invalid_signature`);
+            return res.redirect(`${process.env.URL_FRONTEND}/checkout/failed?code=97`);
         }
 
-        const orderId = vnpParams['vnp_TxnRef'];
-        const responseCode = vnpParams['vnp_ResponseCode'];
-        const transactionNo = vnpParams['vnp_TransactionNo'];
-
         // Get order
+        const orderId = vnpParams['vnp_TxnRef'];
         const order = await Order.getOrderByTxnRef(orderId);
 
         if (!order) {
@@ -184,7 +182,6 @@ const vnpayCallback = async (req, res, next) => {
 
         if (responseCode === '00') {
             await Order.updatePaymentStatus(orderId, 'completed');
-
             await Order.updateOrderStatus(orderId, 'processing');
 
             return res.redirect(`${process.env.URL_FRONTEND}/checkout/success?vnp_ResponseCode=${responseCode}&vnp_TxnRef=${orderId}`);

@@ -20,7 +20,22 @@ exports.getAllCategories = async (req, res) => {
 
 exports.createCategory = async (req, res) => {
     try {
-        const newCategory = await Category.create(req.body);
+        const { name, description, image = '', image_public_id = '' } = req.body;
+
+        // Validate required fields
+        if (!name || name.trim() === '') {
+            return res.status(400).json({
+                status: 'fail',
+                message: 'Tên danh mục không được để trống'
+            });
+        }
+
+        const newCategory = await Category.create({
+            name,
+            description: description || '',
+            image: image || '',
+            image_public_id: image_public_id || ''
+        });
 
         res.status(201).json({
             status: 'success',
@@ -36,7 +51,22 @@ exports.createCategory = async (req, res) => {
 
 exports.updateCategory = async (req, res) => {
     try {
-        const category = await Category.update(req.params.id, req.body);
+        const { name, description, image, image_public_id } = req.body;
+
+        // Validate required fields
+        if (!name || name.trim() === '') {
+            return res.status(400).json({
+                status: 'fail',
+                message: 'Tên danh mục không được để trống'
+            });
+        }
+
+        const category = await Category.update(req.params.id, {
+            name,
+            description: description || '',
+            image: image || '',
+            image_public_id: image_public_id || ''
+        });
 
         res.status(200).json({
             status: 'success',
