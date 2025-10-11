@@ -4,25 +4,26 @@ class Order {
     static async findById(orderId) {
         const [orders] = await db.query(
             `SELECT o.*, oi.*, p.name as product_name, pv.color, pv.size,
-            u.full_name as user_name, u.email as user_email,
-            (SELECT image FROM product_variant_images 
-             WHERE variant_id = oi.variant_id AND is_thumbnail = 1 
-             LIMIT 1) AS image
-         FROM orders o
-         LEFT JOIN order_items oi ON o.id = oi.order_id
-         LEFT JOIN products p ON oi.product_id = p.id
-         LEFT JOIN product_variants pv ON oi.variant_id = pv.id
-         LEFT JOIN users u ON o.user_id = u.id
-         WHERE o.id = ?`,
+        u.full_name as user_name, u.email as user_email,
+        (SELECT image FROM product_variant_images 
+         WHERE variant_id = oi.variant_id AND is_thumbnail = 1 
+         LIMIT 1) AS image
+        FROM orders o
+        LEFT JOIN order_items oi ON o.id = oi.order_id
+        LEFT JOIN products p ON oi.product_id = p.id
+        LEFT JOIN product_variants pv ON oi.variant_id = pv.id
+        LEFT JOIN users u ON o.user_id = u.id
+        WHERE o.id = ?`,
             [orderId]
         );
 
         if (!orders.length) return null;
 
-        // Cấu trúc lại dữ liệu để gom nhóm các items
+        // Đảm bảo thêm user_id vào kết quả trả về
         const orderDetails = {
             id: orders[0].id,
             order_id: orders[0].order_id,
+            user_id: orders[0].user_id,
             user_name: orders[0].user_name,
             shipping_address: orders[0].shipping_address,
             phone_number: orders[0].phone_number,
@@ -154,7 +155,7 @@ class Order {
                     payment_status,
                     order_status
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-                [user_id, full_name, shipping_address, phone_number, total_amount, payment_method, 'pending', 'processing']
+                [user_id, full_name, shipping_address, phone_number, total_amount, payment_method, 'pending', 'pending']
             );
             const orderId = orderResult.insertId;
 

@@ -234,21 +234,21 @@ const cancelOrder = async (req, res, next) => {
         const { orderId } = req.params;
         const userId = req.user.id;
 
-        // Kiểm tra đơn hàng tồn tại và thuộc về user
+        // Kiểm tra đơn hàng tồn tại
         const order = await Order.findById(orderId);
         if (!order) {
             throw new ApiError(404, 'Order not found');
         }
-        if (order.user_id !== userId) {
+        if (order.user_id !== userId && req.user.role !== 'admin') {
             throw new ApiError(403, 'Not authorized to cancel this order');
         }
 
-        // Chỉ cho phép hủy đơn hàng ở trạng thái pending hoặc processing
+        // Kiểm tra trạng thái đơn hàng
         if (!['pending', 'processing'].includes(order.order_status)) {
-            throw new ApiError(400, 'Order cannot be cancelled');
+            throw new ApiError(400, 'Order cannot be cancelled at this status');
         }
 
-        // Cập nhật trạng thái đơn hàng
+        // Thực hiện hủy đơn hàng
         const updatedOrder = await Order.cancelOrder(orderId);
 
         res.status(200).json({

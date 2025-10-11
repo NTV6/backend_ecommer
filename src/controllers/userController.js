@@ -74,7 +74,6 @@ exports.signup = async (req, res) => {
         // Kiểm tra xem người dùng đã tồn tại chưa
         const existingUser = await User.findByUid(decodedToken.uid);
         if (existingUser) {
-            // Nếu người dùng đã tồn tại, trả về thông tin người dùng
             return res.status(200).json({
                 status: 'success',
                 message: 'Người dùng đã tồn tại',
@@ -91,14 +90,25 @@ exports.signup = async (req, res) => {
             uid: decodedToken.uid,
             email,
             full_name,
-            phone_number: phone_number || '',  // Đặt giá trị mặc định là chuỗi rỗng
-            address: address || '',            // Đặt giá trị mặc định là chuỗi rỗng
-            date_of_birth: date_of_birth || null,  // Đặt giá trị mặc định là null
-            profile_picture: profile_picture || '', // Đặt giá trị mặc định là chuỗi rỗng
+            phone_number: phone_number || '',
+            address: address || '',
+            date_of_birth: date_of_birth || null,
+            profile_picture: profile_picture || '',
             role: 'user'
         };
 
-        await User.createUser(userData);
+        try {
+            await User.createUser(userData);
+        } catch (error) {
+            // Xử lý lỗi số điện thoại đã tồn tại
+            if (error.message === 'Số điện thoại đã được sử dụng') {
+                return res.status(400).json({
+                    status: 'error',
+                    message: 'Số điện thoại đã được sử dụng'
+                });
+            }
+            throw error;
+        }
 
         res.status(201).json({
             status: 'success',

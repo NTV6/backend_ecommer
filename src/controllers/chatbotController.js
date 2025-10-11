@@ -26,6 +26,7 @@ const chatbotController = {
                 name: p.name,
                 description: p.description,
                 category: categoriesData.find(c => c.id === p.category_id),
+                image: p.variants[0]?.images[0]?.image || null,
                 variants: p.variants.map(v => ({
                     color: v.color,
                     size: v.size,
@@ -39,63 +40,64 @@ const chatbotController = {
 
             // Cải thiện prompt để trả về JSON có cấu trúc
             const prompt = `
-            Bạn là trợ lý mua sắm thông minh. Hãy phân tích câu hỏi và trả lời theo định dạng JSON.
+            Vai trò: Trợ lý mua sắm thông minh
+            Input: ${message}
 
-            Context: 
-            1. Danh mục sản phẩm:
-            ${JSON.stringify(categoriesData, null, 2)}
+            Context (simplified):
+            Categories: ${JSON.stringify(categoriesData.map(c => ({ id: c.id, name: c.name })))}
+            Products: ${JSON.stringify(productsData.map(p => ({
+                id: p.id,
+                name: p.name,
+                category: p.category?.name,
+                image: p.image,
+                priceRange: {
+                    min: Math.min(...p.variants.map(v => v.price)),
+                    max: Math.max(...p.variants.map(v => v.price))
+                },
+                variants: p.variants.map(v => ({
+                    color: v.color,
+                    size: v.size,
+                    price: v.price,
+                    stock: v.stock,
+                    images: v.images
+                }))
+            })))}
 
-            2. Thông tin chi tiết sản phẩm:
-            ${JSON.stringify(productsData, null, 2)}
-            
-            Hãy trả về JSON với cấu trúc sau:
+            Output format:
             {
-                "type": "category_list" | "product_detail" | "product_list" | "general_response",
-                "message": "Nội dung trả lời văn bản",
-                "data": {
-                    // Nếu type = "category_list":
-                    "categories": [{ "id": 1, "name": "Tên danh mục", "productCount": 5 }]
-                    
-                    // Nếu type = "product_list":
-                    "products": [{ 
-                        "id": 1,
-                        "name": "Tên sản phẩm",
-                        "description": "Mô tả",
-                        "category": "Tên danh mục",
-                        "priceRange": { "min": 100000, "max": 200000 },
-                        "image": "url_ảnh_đầu_tiên",
-                        "inStock": true
-                    }]
-                    
-                    // Nếu type = "product_detail":
-                    "product": {
-                        "id": 1,
-                        "name": "Tên sản phẩm",
-                        "description": "Mô tả",
-                        "category": "Tên danh mục",
-                        "variants": [{
-                            "color": "Đỏ",
-                            "size": "M",
-                            "price": 150000,
-                            "stock": 10,
-                            "images": ["url1", "url2"]
+                "type": "category_list" | "product_list" | "product_detail" | "general_response",
+                "message": "Câu trả lời ngắn gọn",
+                "showImages": boolean,
+                "data": null | {
+                    categories?: [{id, name, productCount}],
+                    products?: [{
+                        id, 
+                        name, 
+                        priceRange, 
+                        category,
+                        image,  // Đảm bảo trả về url hình ảnh
+                        inStock
+                    }],
+                    product?: {
+                        id, 
+                        name,
+                        image,  // Thêm thumbnail cho sản phẩm
+                        variants: [{
+                            color, 
+                            size, 
+                            price, 
+                            stock,
+                            images  // Đảm bảo trả về mảng url hình ảnh
                         }]
                     }
                 }
             }
 
-            Quy tắc:
-            1. Nếu hỏi về danh mục → type = "category_list" hoặc "product_list"
-            2. Nếu hỏi về sản phẩm cụ thể → type = "product_detail"
-            3. Nếu câu hỏi chung (chào hỏi, hướng dẫn) → type = "general_response"
-            4. Luôn trả về JSON hợp lệ
-            5. message phải rõ ràng, thân thiện
-            6. Nếu không tìm thấy, trả type = "general_response" với message thông báo
-
-            Câu hỏi: ${message}
-            
-            Chỉ trả về JSON, không thêm text nào khác.
-            `;
+            Rules:
+            1. Trả lời ngắn gọn, đúng trọng tâm
+            2. showImages=true khi người dùng yêu cầu: xem ảnh/hình/photo/show/hiển thị
+            3. Khi showImages=true, PHẢI trả về url hình trong data
+            4. Luôn trả về JSON hợp lệ`;
 
             const result = await model.generateContent(prompt);
             const response = await result.response;
